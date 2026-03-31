@@ -1,0 +1,51 @@
+RIYA SONI
+Hoboken, NJ | (201) 232-7020 | rsoni6@stevens.edu | LinkedIn: linkedin.com/in/riya-soni-ml-engineer | Github: github.com/riya0920
+
+EDUCATION
+Stevens Institute of Technology, Hoboken — September 2024 – May 2026
+Master of Science, Computer Science (MSCS) GPA: 3.5
+Relevant Coursework: Deep Learning, Natural Language Processing, Computer Vision, Information Retrieval.
+
+Indus University — August 2020 – May 2024
+Bachelor of Technology in Computer Science Engineering GPA: 3.9
+Relevant Coursework: Data Structures and Algorithms, C, C++, Machine Learning, Java, Data Science, Natural Language Processing, Soft Computing, Probability and Statistical Mathematics, Linear Algebra.
+
+SKILLS
+Languages: Python, C++, SQL, Java
+Cloud & MLOps: AWS (Bedrock, Redshift), Docker, Git, System Design
+AI & GenAI Frameworks: LangChain, PyTorch, TensorFlow, Keras, Scikit-learn, RAG (Retrieval-Augmented Generation)
+Data Engineering: Pandas, NumPy, ETL Pipelines
+
+EXPERIENCE
+Giraffe Media Group — Sept 2025 – Present
+Data Analyst, West Palm Beach, Florida
+- Built and deployed a Claude MCP server in production integrated with Redshift, enabling natural-language data access for stakeholders; automated a 6-report daily workflow with auto-formatted Slack delivery, eliminating 2+ hours of manual effort per day.
+- Built a demographic × offer type performance analysis pipeline in Redshift across gender, age, and state dimensions; developed a recommendation engine scoring optimal offers per segment and presented findings to leadership, directly driving ORCA broadcast campaign strategy changes.
+- Computed per-user Lifetime Value from Redshift engagement and revenue data; built a predictive LTV model and ran a 180-day simulation testing retention strategies, identifying approaches projected to increase daily profit by $400–$500 (~$150K annualized).
+
+Giraffe Media Group — Jun 2025 – Aug 2025
+Data Analyst Intern, West Palm Beach, Florida
+- Architected a Text-to-SQL pipeline on AWS Bedrock using LangChain over Amazon Redshift, with dynamic schema alignment that reduced hallucinated queries by 40%; established a semantic layer that automated data retrieval and reduced support tickets by 90%.
+
+Freshers Booth — Jun 2024 – Aug 2024
+Machine Learning Engineer Intern, Ahmedabad, Gujarat
+- Fine-tuned BERT-based NER models in PyTorch, improving F1-score by 15% on domain-specific text datasets.
+- Built automated data-cleaning pipelines in Pandas that removed duplicates and corrected labeling errors, improving training dataset quality by 20%.
+- Designed and implemented model performance monitoring dashboards in Python, tracking F1-score drift and data quality metrics across production NER pipelines, reducing model degradation response time by 30%.
+
+Acencore Technology — Jan 2024 – May 2024
+AI Engineering Intern, Ahmedabad, Gujarat, India
+- Engineered an automated data preprocessing pipeline using Pandas and NumPy to clean and tokenize raw text inputs, reducing data preparation latency by 20% and ensuring consistent input formatting for NLP models.
+- Built Flask/FastAPI inference endpoints to serve ML model predictions in production with optimized payload structure and reduced response latency.
+
+PROJECTS
+Mechanistic Interpretability: Polysemanticity in Transformers | Python, PyTorch, Scikit-learn
+- Profiled all 144 attention heads in GPT-2 Small, identifying 14 distinct head types and discovering synergistic circuits via group ablation; developed a functional variance metric to quantify polysemanticity (mean 1.130 in GPT-2 vs 0.053 in supervised baselines).
+- Designed a greedy sequential SVD pruning pipeline that decomposes heads into singular value components, maps each to linguistic functions, and removes parasitic components; pruned 30 heads (128 SVD components) for a 6.15% loss improvement across all 10 linguistic tags — zero retraining, zero new parameters.
+- Validated scaling behavior on GPT-2 Medium (26% less polysemantic), confirming the superposition hypothesis; research mentored by a Bloomberg LP Senior ML Engineer.
+
+Multilingual Ingredient Classifier for Dietary Compliance | Python, Tesseract, Google Translate API, Flask
+- Built and deployed a Flask web app that extracts ingredient text from food packaging images via Tesseract OCR, translates non-English labels using Google Translate API, and classifies each ingredient as vegetarian or non-vegetarian using a custom neural network; supports 10+ languages for instant dietary compliance checks.
+
+RESEARCH INTERESTS
+Mechanistic Interpretability, Agentic AI Systems, Production ML Engineering, NLP, LLM Alignment

@@ -1,0 +1,51 @@
+# .github/workflows/job_hunter.yml
+# Free cron-based job hunting via GitHub Actions
+# Note: GitHub Actions cron has 5-30 min delay, so use 15-min intervals
+# For private repos: 2,000 free minutes/month ≈ plenty for this
+name: Job Hunter
+
+on:
+  schedule:
+    # Run every 15 minutes (GitHub minimum practical interval)
+    - cron: '*/15 * * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  hunt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Job Hunter
+        env:
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+          GOOGLE_CREDENTIALS_FILE: credentials.json
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          BASE_RESUME_PATH: resume.txt
+        run: |
+          # Decode credentials from secret
+          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" | base64 -d > credentials.json
+          python main.py
+
+      - name: Upload job database
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jobs-db
+          path: jobs.db
+          retention-days: 30
