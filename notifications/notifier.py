@@ -128,6 +128,8 @@ def send_email(jobs: list[dict]) -> bool:
 def send_push(jobs: list[dict]) -> bool:
     """
     Send push notification via ntfy.sh (free, instant, mobile app available).
+    Includes clickable links: tap notification → top job's apply page,
+    plus an action button to open the full Google Sheet.
     """
     topic = os.getenv("NTFY_TOPIC")
     if not topic:
@@ -150,15 +152,41 @@ def send_push(jobs: list[dict]) -> bool:
         if len(high) > 5:
             body += f"\n...and {len(high) - 5} more"
         
+        # Top job's apply URL — tapping the notification opens this
+        top_url = high[0].get("url", "")
+        
+        # Google Sheet link for the "View All" action button
+        sheet_id = os.getenv("GOOGLE_SHEETS_ID", "")
+        sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}" if sheet_id else ""
+        
+        headers = {
+            "Title": title.encode("utf-8"),
+            "Priority": "high",
+            "Tags": "fire,briefcase",
+            "Content-Type": "text/plain; charset=utf-8",
+        }
+        
+        # Tap notification → open top job's apply link
+        if top_url:
+            headers["Click"] = top_url
+        
+        # Add action buttons for each top job (up to 3) + Google Sheet
+        actions = []
+        for j in high[:3]:
+            url = j.get("url", "")
+            if url:
+                label = f"Apply: {j['company']}"[:40]
+                actions.append(f"view, {label}, {url}")
+        if sheet_url:
+            actions.append(f"view, Open Google Sheet, {sheet_url}")
+        
+        if actions:
+            headers["Actions"] = "; ".join(actions)
+        
         requests.post(
             f"https://ntfy.sh/{topic}",
             data=body.encode("utf-8"),
-            headers={
-                "Title": title.encode("utf-8"),
-                "Priority": "high",
-                "Tags": "fire,briefcase",
-                "Content-Type": "text/plain; charset=utf-8",
-            },
+            headers=headers,
             timeout=10,
         )
         print(f"[NTFY] Push sent for {len(high)} high-match jobs")
