@@ -15,8 +15,8 @@ def scrape_aggregators(search_queries: list[str], config: dict) -> list[dict]:
     Returns a list of normalized job dicts.
     """
     all_jobs = []
-    # Glassdoor's API is broken (400 errors on location parsing) — skip it
-    sites = ["indeed", "linkedin", "google", "zip_recruiter"]
+    # Glassdoor: broken API (400 errors). ZipRecruiter: blocks cloud IPs (403 Cloudflare WAF)
+    sites = ["indeed", "linkedin", "google"]
     
     location = config.get("location", "United States")
     hours_old = config.get("max_hours_old", 24)
