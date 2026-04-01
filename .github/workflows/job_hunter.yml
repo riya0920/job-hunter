@@ -68,6 +68,7 @@ jobs:
           EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SCRAPERAPI_KEY: ${{ secrets.SCRAPERAPI_KEY }}
           BASE_RESUME_PATH: resume.txt
         run: |
           echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" | base64 -d > credentials.json

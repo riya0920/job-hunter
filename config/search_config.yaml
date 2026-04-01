@@ -14,6 +14,17 @@ search_queries:
   - "AI/ML engineer"
   - "MLOps engineer"
   - "computer vision engineer"
+  # More specific queries for better LinkedIn coverage
+  - "LLM engineer"
+  - "pytorch engineer"
+  - "generative AI engineer"
+  - "AI research engineer"
+  - "machine learning intern"
+  - "AI intern 2026"
+  - "ML platform engineer"
+  - "NLP data scientist"
+  - "conversational AI engineer"
+  - "recommendation systems engineer"
 
 # Location filter
 location: "United States"
