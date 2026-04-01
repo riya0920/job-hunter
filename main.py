@@ -57,10 +57,12 @@ def run(dry_run: bool = False, ats_only: bool = False):
     if not ats_only:
         from scrapers.jobspy_scraper import scrape_aggregators, scrape_linkedin_direct
         queries = config.get("search_queries", [])
-        agg_jobs = scrape_aggregators(queries, config)
+        
+        # JobSpy (Indeed/LinkedIn/Google) — slow, use core queries only
+        agg_jobs = scrape_aggregators(queries[:10], config)
         all_raw_jobs.extend(agg_jobs)
         
-        # LinkedIn backup — catches jobs JobSpy misses due to rate limiting
+        # LinkedIn direct — fast, use ALL queries for max coverage
         li_jobs = scrape_linkedin_direct(queries, config)
         all_raw_jobs.extend(li_jobs)
     
