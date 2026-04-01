@@ -197,18 +197,47 @@ def send_push(jobs: list[dict]) -> bool:
         return False
 
 
+def send_no_jobs_push() -> bool:
+    """Send a quiet push when no new jobs are found."""
+    topic = os.getenv("NTFY_TOPIC")
+    if not topic:
+        return False
+    
+    try:
+        from datetime import datetime
+        now = datetime.now().strftime("%I:%M %p")
+        requests.post(
+            f"https://ntfy.sh/{topic}",
+            data=f"Scanned all portals at {now} — no new matching jobs found. Will check again soon.".encode("utf-8"),
+            headers={
+                "Title": "Job Hunter - No new jobs".encode("utf-8"),
+                "Priority": "low",
+                "Tags": "mag",
+                "Content-Type": "text/plain; charset=utf-8",
+            },
+            timeout=10,
+        )
+        print("[NTFY] Sent no-new-jobs notification")
+        return True
+    except Exception as e:
+        print(f"[NTFY] Failed: {e}")
+        return False
+
+
 def notify(jobs: list[dict]) -> dict:
     """Send all notifications for a batch of new jobs."""
     if not jobs:
         print("[NOTIFY] No new jobs to notify about")
-        return {"email": False, "push": False}
+        send_no_jobs_push()
+        return {"email": False, "push": True}
     
     min_score = float(os.getenv("NOTIFY_MIN_SCORE", 30))
     notify_jobs = [j for j in jobs if j.get("score", 0) >= min_score]
     
     if not notify_jobs:
         print(f"[NOTIFY] No jobs above score threshold ({min_score})")
-        return {"email": False, "push": False}
+        send_no_jobs_push()
+        return {"email": False, "push": True}
     
     email_sent = send_email(notify_jobs)
     push_sent = send_push(notify_jobs)

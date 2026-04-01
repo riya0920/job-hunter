@@ -248,6 +248,50 @@ def scrape_ashby(companies: list[str], config: dict) -> list[dict]:
     return jobs
 
 
+# =========================================================
+# REMOTIVE — free API for remote jobs
+# =========================================================
+def scrape_remotive(config: dict) -> list[dict]:
+    """Scrape Remotive's free public API for remote AI/ML jobs."""
+    jobs = []
+    keywords = config.get("relevance_keywords", [])
+    
+    url = "https://remotive.com/api/remote-jobs?category=software-dev&limit=50"
+    data = _get_json_safe(url)
+    
+    if not data or "jobs" not in data:
+        print("[REMOTIVE] Total: 0 jobs")
+        return jobs
+    
+    count = 0
+    for j in data["jobs"]:
+        title = j.get("title", "")
+        description = j.get("description", "")
+        company = j.get("company_name", "")
+        job_url = j.get("url", "")
+        pub_date = j.get("publication_date", "")
+        
+        if not _is_ai_ml_relevant(title, _clean_html(description), keywords):
+            continue
+        
+        jobs.append({
+            "title": title,
+            "company": company,
+            "location": "Remote",
+            "url": job_url,
+            "description": _clean_html(description),
+            "date_posted": pub_date,
+            "job_type": "fulltime",
+            "source": "remotive",
+        })
+        count += 1
+    
+    if count > 0:
+        print(f"[REMOTIVE] {count} AI/ML jobs")
+    print(f"[REMOTIVE] Total: {len(jobs)} jobs")
+    return jobs
+
+
 def scrape_all_ats(config: dict) -> list[dict]:
     """Run all ATS scrapers and combine results."""
     all_jobs = []
@@ -262,5 +306,10 @@ def scrape_all_ats(config: dict) -> list[dict]:
         all_jobs.extend(scrape_lever(lv, config))
     if ab:
         all_jobs.extend(scrape_ashby(ab, config))
+    
+    # Extra free API sources
+    extra = config.get("extra_api_sources", {})
+    if extra.get("remotive"):
+        all_jobs.extend(scrape_remotive(config))
     
     return all_jobs

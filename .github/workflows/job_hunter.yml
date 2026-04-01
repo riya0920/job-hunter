@@ -1,19 +1,42 @@
 # .github/workflows/job_hunter.yml
-# Free cron-based job hunting via GitHub Actions
-# Note: GitHub Actions cron has 5-30 min delay, so use 15-min intervals
-# For private repos: 2,000 free minutes/month ≈ plenty for this
+# Smart scheduling — aggressive during business hours, lighter at night
+# All times in UTC (ET = UTC - 4 during EDT)
+#
+# Schedule (Eastern Time):
+#   9am - 7pm  → every 15 min  (peak job posting hours)
+#   7pm - 10pm → every 20 min  (evening wind-down)
+#   10pm - 12am → every 45 min (late night)
+#   12am - 7am → twice (1am, 4am) (overnight)
+#   7am - 9am  → every 30 min  (early morning ramp-up)
+#
+# UTC conversions (EDT = UTC-4):
+#   9am-7pm ET  = 13:00-23:00 UTC → */15 min
+#   7pm-10pm ET = 23:00-02:00 UTC → */20 min
+#   10pm-12am ET = 02:00-04:00 UTC → */45 min  
+#   12am-7am ET = 04:00-11:00 UTC → twice
+#   7am-9am ET  = 11:00-13:00 UTC → */30 min
+
 name: Job Hunter
 
 on:
   schedule:
-    # Run every 15 minutes (GitHub minimum practical interval)
-    - cron: '*/15 * * * *'
-  workflow_dispatch:  # Allow manual trigger
+    # 9am-7pm ET (13-22 UTC): every 15 min
+    - cron: '*/15 13-22 * * *'
+    # 7pm-10pm ET (23, 0, 1 UTC): every 20 min
+    - cron: '*/20 23 * * *'
+    - cron: '*/20 0-1 * * *'
+    # 10pm-12am ET (2-3 UTC): every 45 min
+    - cron: '0,45 2-3 * * *'
+    # 12am-7am ET (4-10 UTC): twice — 4am and 7am UTC (12am and 3am ET)
+    - cron: '0 4,7 * * *'
+    # 7am-9am ET (11-12 UTC): every 30 min
+    - cron: '*/30 11-12 * * *'
+  workflow_dispatch:
 
 jobs:
   hunt:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
 
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +50,15 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # Restore the dedup database from previous runs
+      - name: Restore job database
+        uses: actions/cache/restore@v4
+        with:
+          path: jobs.db
+          key: jobs-db-${{ github.run_id }}
+          restore-keys: |
+            jobs-db-
+
       - name: Run Job Hunter
         env:
           GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
@@ -38,14 +70,13 @@ jobs:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           BASE_RESUME_PATH: resume.txt
         run: |
-          # Decode credentials from secret
           echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" | base64 -d > credentials.json
           python main.py
 
-      - name: Upload job database
+      # Save the dedup database for next run
+      - name: Save job database
+        uses: actions/cache/save@v4
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: jobs-db
           path: jobs.db
-          retention-days: 30
+          key: jobs-db-${{ github.run_id }}

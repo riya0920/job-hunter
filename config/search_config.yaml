@@ -31,53 +31,104 @@ job_types:
 results_per_query: 25
 
 # ---- ATS Direct API Targets ----
-# Verified March 2026 — slugs confirmed working
-# Companies using Greenhouse (boards-api.greenhouse.io/v1/boards/{slug}/jobs)
+# Verified March 2026 — these are FREE, no-auth JSON APIs
+
+# Greenhouse companies (boards-api.greenhouse.io/v1/boards/{slug}/jobs)
 greenhouse_companies:
+  # Top AI/ML companies
   - anthropic
   - databricks
-  - figma
   - deepmind
+  - cerebrassystems
   - snorkelai
   - labelbox
-  - cerebrassystems
-  - nvidiacorporation
+  - huggingface
+  - coreweave
+  - weights-biases
+  - wandb
+  - modal-labs
+  - dbt-labs
+  - airbyte
+  # Big tech
   - meta
   - stripe
+  - palantir
+  - cloudflare
+  - datadog
+  - elastic
+  - confluent
+  - fivetran
   - discord
+  - figma
   - notion
   - airtable
-  - palantir
   - asana
   - duolingo
   - cockroachlabs
-  - elastic
   - hashicorp
-  - cloudflare
-  - datadog
-  - confluent
-  - fivetran
-  - dbt-labs
-  - airbyte
-  - modal-labs
-  - weights-biases
-  - wandb
-  - huggingface
-  - coreweave
+  # AI startups & labs
+  - samsara
+  - verkada
+  - andurilindustries
+  - relativityspace
+  - tempus
+  - recursionpharmaceuticals
+  - instabase
+  - movableink
+  - sambanovasystems
+  - benetech
+  - groundlight
+  - archerrobotics
+  # Finance/fintech with ML teams
+  - twosigma
+  - citadelsecurities
+  - oldmissioncapital
+  - goldmansachs
+  - jpmorgan
+  - bloomberg
+  - robinhood
+  - plaid
+  - brex
+  - affirm
+  - chime
+  # Atlanta-area companies
+  - mailchimp
+  - salesloft
+  - calendly
+  - greenlight
+  - bakkt
 
-# Companies using Lever (api.lever.co/v0/postings/{slug})
+# Lever companies (api.lever.co/v0/postings/{slug})
 lever_companies:
   - zoox
   - nuro
   - aurora-innovation
   - applied-intuition
   - shield-ai
+  - rippling
+  - deel
+  - notion
+  - figma
+  - abridge
 
-# Companies using Ashby
+# Ashby companies
 ashby_companies:
   - ramp
   - vercel
   - linear
+  - cursor
+  - perplexityai
+  - imbue
+
+# ---- Additional Free API Sources ----
+# These are scraped directly alongside ATS boards
+extra_api_sources:
+  # Wellfound (AngelList) — startup jobs
+  wellfound: true
+  # Remotive — remote AI jobs
+  remotive: true
+  # USAJobs — federal government AI positions
+  usajobs: true
 
 # ---- Scoring Configuration ----
 scoring:
