@@ -6,7 +6,16 @@ import smtplib
 import requests
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+
+# Eastern Time (UTC-4 EDT, UTC-5 EST)
+EASTERN = timezone(timedelta(hours=-4))  # EDT — change to -5 after Nov daylight saving
+
+
+def _get_eastern_time() -> str:
+    """Get current time formatted in Eastern Time."""
+    return datetime.now(EASTERN).strftime('%B %d, %Y at %I:%M %p ET')
 
 
 def send_email(jobs: list[dict]) -> bool:
@@ -60,7 +69,7 @@ def send_email(jobs: list[dict]) -> bool:
     <body>
         <div class="container">
             <h1>🎯 {len(jobs)} New AI/ML Job Match{'es' if len(jobs) != 1 else ''}</h1>
-            <div class="subtitle">{datetime.now().strftime('%B %d, %Y at %I:%M %p')} • Job Hunter Alert</div>
+            <div class="subtitle">{_get_eastern_time()} • Job Hunter Alert</div>
     """
     
     def render_job(j, tier):
@@ -204,8 +213,7 @@ def send_no_jobs_push() -> bool:
         return False
     
     try:
-        from datetime import datetime
-        now = datetime.now().strftime("%I:%M %p")
+        now = _get_eastern_time()
         requests.post(
             f"https://ntfy.sh/{topic}",
             data=f"Scanned all portals at {now} — no new matching jobs found. Will check again soon.".encode("utf-8"),
