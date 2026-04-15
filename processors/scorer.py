@@ -214,6 +214,69 @@ def extract_skills_match(description: str, config: dict) -> str:
     return ", ".join(found[:8])  # Top 8 matching skills
 
 
+def is_us_location(location: str) -> bool:
+    """Check if a job location is in the United States."""
+    if not location:
+        return True  # No location info — include it, better safe than sorry
+    
+    loc = location.lower().strip()
+    
+    # Explicit US signals
+    us_signals = [
+        "united states", "usa", ", us", " us,",
+        "remote", "hybrid",  # Remote/hybrid with no country = likely US
+    ]
+    if any(sig in loc for sig in us_signals):
+        return True
+    
+    # US state abbreviations (2-letter) and common city patterns
+    us_states = [
+        ", al", ", ak", ", az", ", ar", ", ca", ", co", ", ct", ", de", ", fl",
+        ", ga", ", hi", ", id", ", il", ", in", ", ia", ", ks", ", ky", ", la",
+        ", me", ", md", ", ma", ", mi", ", mn", ", ms", ", mo", ", mt", ", ne",
+        ", nv", ", nh", ", nj", ", nm", ", ny", ", nc", ", nd", ", oh", ", ok",
+        ", or", ", pa", ", ri", ", sc", ", sd", ", tn", ", tx", ", ut", ", vt",
+        ", va", ", wa", ", wv", ", wi", ", wy", ", dc",
+    ]
+    if any(loc.endswith(st) or st + " " in loc or st + "," in loc for st in us_states):
+        return True
+    
+    # Full state names
+    us_state_names = [
+        "alabama", "alaska", "arizona", "arkansas", "california", "colorado",
+        "connecticut", "delaware", "florida", "georgia", "hawaii", "idaho",
+        "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana",
+        "maine", "maryland", "massachusetts", "michigan", "minnesota",
+        "mississippi", "missouri", "montana", "nebraska", "nevada",
+        "new hampshire", "new jersey", "new mexico", "new york",
+        "north carolina", "north dakota", "ohio", "oklahoma", "oregon",
+        "pennsylvania", "rhode island", "south carolina", "south dakota",
+        "tennessee", "texas", "utah", "vermont", "virginia", "washington",
+        "west virginia", "wisconsin", "wyoming", "district of columbia",
+    ]
+    if any(state in loc for state in us_state_names):
+        return True
+    
+    # Non-US signals — reject these
+    non_us = [
+        "india", "germany", "uk", "united kingdom", "canada", "france",
+        "australia", "singapore", "japan", "china", "brazil", "mexico",
+        "ireland", "netherlands", "spain", "italy", "sweden", "switzerland",
+        "israel", "korea", "taiwan", "hong kong", "bangalore", "mumbai",
+        "hyderabad", "delhi", "pune", "chennai", "kolkata", "ahmedabad",
+        "london", "berlin", "munich", "paris", "amsterdam", "dublin",
+        "toronto", "vancouver", "montreal", "sydney", "melbourne",
+        "karnataka", "telangana", "maharashtra", "tamil nadu", "gujarat",
+        "bavaria", "ontario", "british columbia", "quebec",
+        "bengaluru", "noida", "gurgaon", "gurugram",
+    ]
+    if any(place in loc for place in non_us):
+        return False
+    
+    # No clear signal either way — include it
+    return True
+
+
 def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
     """
     Full processing pipeline:
@@ -241,6 +304,12 @@ def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
         
         # Skip if we've seen this before
         if is_duplicate(url, title, company):
+            continue
+        
+        # Filter non-US locations
+        location = job.get("location", "")
+        if not is_us_location(location):
+            mark_seen(url, title, company, score=0)
             continue
         
         # Check experience level
