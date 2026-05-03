@@ -1,6 +1,7 @@
 """
 Notification system — Email (Gmail SMTP) + Push (ntfy.sh).
 """
+
 import os
 import smtplib
 import requests
@@ -8,14 +9,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta
 
-
 # Eastern Time (UTC-4 EDT, UTC-5 EST)
 EASTERN = timezone(timedelta(hours=-4))  # EDT — change to -5 after Nov daylight saving
 
 
 def _get_eastern_time() -> str:
     """Get current time formatted in Eastern Time."""
-    return datetime.now(EASTERN).strftime('%B %d, %Y at %I:%M %p ET')
+    return datetime.now(EASTERN).strftime("%B %d, %Y at %I:%M %p ET")
 
 
 def send_email(jobs: list[dict]) -> bool:
@@ -26,16 +26,16 @@ def send_email(jobs: list[dict]) -> bool:
     email_from = os.getenv("EMAIL_FROM")
     email_to = os.getenv("EMAIL_TO")
     app_password = os.getenv("EMAIL_APP_PASSWORD")
-    
+
     if not all([email_from, email_to, app_password]):
         print("[EMAIL] Missing email credentials, skipping notification")
         return False
-    
+
     # Separate high-priority (score >= 70) from others
     high = [j for j in jobs if j.get("score", 0) >= 70]
     medium = [j for j in jobs if 50 <= j.get("score", 0) < 70]
     low = [j for j in jobs if j.get("score", 0) < 50]
-    
+
     # Build HTML email
     html = f"""
     <html>
@@ -71,13 +71,13 @@ def send_email(jobs: list[dict]) -> bool:
             <h1>🎯 {len(jobs)} New AI/ML Job Match{'es' if len(jobs) != 1 else ''}</h1>
             <div class="subtitle">{_get_eastern_time()} • Job Hunter Alert</div>
     """
-    
+
     def render_job(j, tier):
-        score = j.get('score', 0)
-        score_class = 'high' if score >= 70 else ('medium' if score >= 50 else 'low')
-        h1b = j.get('h1b_status', 'Unknown')
-        h1b_class = 'yes' if 'Sponsor' in h1b else ('no' if 'No' in h1b else 'unknown')
-        
+        score = j.get("score", 0)
+        score_class = "high" if score >= 70 else ("medium" if score >= 50 else "low")
+        h1b = j.get("h1b_status", "Unknown")
+        h1b_class = "yes" if "Sponsor" in h1b else ("no" if "No" in h1b else "unknown")
+
         return f"""
             <div class="job job-{tier}">
                 <p class="job-title">{j.get('title', 'Unknown')}</p>
@@ -91,44 +91,46 @@ def send_email(jobs: list[dict]) -> bool:
                 <a href="{j.get('url', '#')}" class="apply-btn">Apply Now →</a>
             </div>
         """
-    
+
     if high:
         html += f'<div class="section-title">🔥 High Match ({len(high)})</div>'
         for j in high:
             html += render_job(j, "high")
-    
+
     if medium:
         html += f'<div class="section-title">⭐ Good Match ({len(medium)})</div>'
         for j in medium:
             html += render_job(j, "medium")
-    
+
     if low:
         html += f'<div class="section-title">📋 Worth a Look ({len(low)})</div>'
         for j in low[:10]:  # Cap low-priority at 10
             html += render_job(j, "low")
         if len(low) > 10:
             html += f'<p class="job-meta">...and {len(low) - 10} more in your Google Sheet</p>'
-    
+
     html += """
         </div>
     </body>
     </html>
     """
-    
+
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"🎯 {len(jobs)} New AI/ML Jobs • {'🔥 ' + str(len(high)) + ' High Match' if high else 'New matches found'}"
+        msg["Subject"] = (
+            f"🎯 {len(jobs)} New AI/ML Jobs • {'🔥 ' + str(len(high)) + ' High Match' if high else 'New matches found'}"
+        )
         msg["From"] = email_from
         msg["To"] = email_to
         msg.attach(MIMEText(html, "html"))
-        
+
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(email_from, app_password)
             server.send_message(msg)
-        
+
         print(f"[EMAIL] Sent digest with {len(jobs)} jobs to {email_to}")
         return True
-        
+
     except Exception as e:
         print(f"[EMAIL] Failed to send: {e}")
         return False
@@ -143,42 +145,42 @@ def send_push(jobs: list[dict]) -> bool:
     topic = os.getenv("NTFY_TOPIC")
     if not topic:
         return False
-    
+
     high = [j for j in jobs if j.get("score", 0) >= 70]
-    
+
     if not high:
         # Only push for high-priority matches
         return False
-    
+
     try:
         title = f"{len(high)} High-Match AI/ML Jobs!"
         body_lines = []
         for j in high[:5]:
-            body_lines.append(
-                f"- {j['title']} @ {j['company']} ({j['score']}%)"
-            )
+            body_lines.append(f"- {j['title']} @ {j['company']} ({j['score']}%)")
         body = "\n".join(body_lines)
         if len(high) > 5:
             body += f"\n...and {len(high) - 5} more"
-        
+
         # Top job's apply URL — tapping the notification opens this
         top_url = high[0].get("url", "")
-        
+
         # Google Sheet link for the "View All" action button
         sheet_id = os.getenv("GOOGLE_SHEETS_ID", "")
-        sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}" if sheet_id else ""
-        
+        sheet_url = (
+            f"https://docs.google.com/spreadsheets/d/{sheet_id}" if sheet_id else ""
+        )
+
         headers = {
             "Title": title.encode("utf-8"),
             "Priority": "high",
             "Tags": "fire,briefcase",
             "Content-Type": "text/plain; charset=utf-8",
         }
-        
+
         # Tap notification → open top job's apply link
         if top_url:
             headers["Click"] = top_url
-        
+
         # Add action buttons for each top job (up to 3) + Google Sheet
         actions = []
         for j in high[:3]:
@@ -188,10 +190,10 @@ def send_push(jobs: list[dict]) -> bool:
                 actions.append(f"view, {label}, {url}")
         if sheet_url:
             actions.append(f"view, Open Google Sheet, {sheet_url}")
-        
+
         if actions:
             headers["Actions"] = "; ".join(actions)
-        
+
         requests.post(
             f"https://ntfy.sh/{topic}",
             data=body.encode("utf-8"),
@@ -200,7 +202,7 @@ def send_push(jobs: list[dict]) -> bool:
         )
         print(f"[NTFY] Push sent for {len(high)} high-match jobs")
         return True
-        
+
     except Exception as e:
         print(f"[NTFY] Failed: {e}")
         return False
@@ -211,12 +213,14 @@ def send_no_jobs_push() -> bool:
     topic = os.getenv("NTFY_TOPIC")
     if not topic:
         return False
-    
+
     try:
         now = _get_eastern_time()
         requests.post(
             f"https://ntfy.sh/{topic}",
-            data=f"Scanned all portals at {now} — no new matching jobs found. Will check again soon.".encode("utf-8"),
+            data=f"Scanned all portals at {now} — no new matching jobs found. Will check again soon.".encode(
+                "utf-8"
+            ),
             headers={
                 "Title": "Job Hunter - No new jobs".encode("utf-8"),
                 "Priority": "low",
@@ -238,16 +242,16 @@ def notify(jobs: list[dict]) -> dict:
         print("[NOTIFY] No new jobs to notify about")
         send_no_jobs_push()
         return {"email": False, "push": True}
-    
+
     min_score = float(os.getenv("NOTIFY_MIN_SCORE", 30))
     notify_jobs = [j for j in jobs if j.get("score", 0) >= min_score]
-    
+
     if not notify_jobs:
         print(f"[NOTIFY] No jobs above score threshold ({min_score})")
         send_no_jobs_push()
         return {"email": False, "push": True}
-    
+
     email_sent = send_email(notify_jobs)
     push_sent = send_push(notify_jobs)
-    
+
     return {"email": email_sent, "push": push_sent}

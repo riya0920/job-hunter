@@ -2,6 +2,7 @@
 Direct ATS API scrapers — Greenhouse, Lever, Ashby.
 These are public, unauthenticated JSON APIs. Extremely reliable.
 """
+
 import requests
 import traceback
 from datetime import datetime, timedelta, timezone
@@ -15,7 +16,7 @@ def _get_json(url: str, timeout: int = 30) -> dict | list | None:
     """Fetch JSON with retries."""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        "Accept": "application/json"
+        "Accept": "application/json",
     }
     resp = requests.get(url, headers=headers, timeout=timeout)
     resp.raise_for_status()
@@ -32,7 +33,7 @@ def _get_json_safe(url: str, timeout: int = 30) -> dict | list | None:
 
 def _is_recent(date_str: str, max_hours: int = 24) -> bool:
     """Check if a date string is within the last N hours.
-    
+
     NOTE: Greenhouse's updated_at is unreliable for freshness — it changes
     on any metadata edit, not just initial posting. For Greenhouse, we rely
     on deduplication (SQLite DB) to avoid re-processing old jobs, and let
@@ -40,7 +41,7 @@ def _is_recent(date_str: str, max_hours: int = 24) -> bool:
     """
     if not date_str or date_str == "None" or date_str == "nan":
         return True  # If no date, include it (better safe than sorry)
-    
+
     try:
         # Try ISO format
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
@@ -50,7 +51,7 @@ def _is_recent(date_str: str, max_hours: int = 24) -> bool:
         return dt >= cutoff
     except (ValueError, TypeError):
         pass
-    
+
     try:
         # Try epoch milliseconds (Lever uses this)
         ts = int(date_str) / 1000
@@ -59,7 +60,7 @@ def _is_recent(date_str: str, max_hours: int = 24) -> bool:
         return dt >= cutoff
     except (ValueError, TypeError):
         pass
-    
+
     return True  # Default: include
 
 
@@ -73,8 +74,8 @@ def _clean_html(html_text: str) -> str:
     """Strip HTML tags for plain text."""
     if not html_text:
         return ""
-    clean = re.sub(r'<[^>]+>', ' ', html_text)
-    clean = re.sub(r'\s+', ' ', clean).strip()
+    clean = re.sub(r"<[^>]+>", " ", html_text)
+    clean = re.sub(r"\s+", " ", clean).strip()
     return clean
 
 
@@ -92,7 +93,7 @@ def scrape_greenhouse(companies: list[str], config: dict) -> list[dict]:
     jobs = []
     max_hours = config.get("max_hours_old", 24)
     keywords = config.get("relevance_keywords", [])
-    
+
     for company in companies:
         data = None
         for url_template in GREENHOUSE_URLS:
@@ -100,11 +101,11 @@ def scrape_greenhouse(companies: list[str], config: dict) -> list[dict]:
             data = _get_json_safe(url)
             if data and "jobs" in data:
                 break
-        
+
         if not data or "jobs" not in data:
             # Silently skip — board slug may be wrong or company moved platforms
             continue
-        
+
         count = 0
         for j in data["jobs"]:
             title = j.get("title", "")
@@ -113,29 +114,31 @@ def scrape_greenhouse(companies: list[str], config: dict) -> list[dict]:
             description = _clean_html(desc_html)
             location_name = j.get("location", {}).get("name", "")
             job_url = j.get("absolute_url", "")
-            
+
             if not _is_recent(updated, max_hours):
                 continue
             if not _is_ai_ml_relevant(title, description, keywords):
                 continue
-            
-            jobs.append({
-                "title": title,
-                "company": company.replace("-", " ").title(),
-                "location": location_name,
-                "url": job_url,
-                "description": description,
-                "date_posted": updated,
-                "job_type": "fulltime",
-                "source": "greenhouse",
-            })
+
+            jobs.append(
+                {
+                    "title": title,
+                    "company": company.replace("-", " ").title(),
+                    "location": location_name,
+                    "url": job_url,
+                    "description": description,
+                    "date_posted": updated,
+                    "job_type": "fulltime",
+                    "source": "greenhouse",
+                }
+            )
             count += 1
-        
+
         if count > 0:
             print(f"[GREENHOUSE] {company}: {count} AI/ML jobs")
-        
+
         time.sleep(0.5)  # Be polite
-    
+
     print(f"[GREENHOUSE] Total: {len(jobs)} jobs")
     return jobs
 
@@ -148,52 +151,56 @@ def scrape_lever(companies: list[str], config: dict) -> list[dict]:
     jobs = []
     max_hours = config.get("max_hours_old", 24)
     keywords = config.get("relevance_keywords", [])
-    
+
     for company in companies:
         url = f"https://api.lever.co/v0/postings/{company}?mode=json"
         data = _get_json_safe(url)
-        
+
         if not data or not isinstance(data, list):
             continue
-        
+
         count = 0
         for j in data:
             title = j.get("text", "")
             created = str(j.get("createdAt", ""))
             desc_html = j.get("descriptionPlain", j.get("description", ""))
-            description = _clean_html(desc_html) if "<" in str(desc_html) else str(desc_html)
-            
+            description = (
+                _clean_html(desc_html) if "<" in str(desc_html) else str(desc_html)
+            )
+
             categories = j.get("categories", {})
             location_name = categories.get("location", "")
             team = categories.get("team", "")
             commitment = categories.get("commitment", "")
-            
+
             job_url = j.get("hostedUrl", j.get("applyUrl", ""))
-            
+
             if not _is_recent(created, max_hours):
                 continue
             if not _is_ai_ml_relevant(title, f"{description} {team}", keywords):
                 continue
-            
+
             job_type = "internship" if "intern" in commitment.lower() else "fulltime"
-            
-            jobs.append({
-                "title": title,
-                "company": company.replace("-", " ").title(),
-                "location": location_name,
-                "url": job_url,
-                "description": description,
-                "date_posted": created,
-                "job_type": job_type,
-                "source": "lever",
-            })
+
+            jobs.append(
+                {
+                    "title": title,
+                    "company": company.replace("-", " ").title(),
+                    "location": location_name,
+                    "url": job_url,
+                    "description": description,
+                    "date_posted": created,
+                    "job_type": job_type,
+                    "source": "lever",
+                }
+            )
             count += 1
-        
+
         if count > 0:
             print(f"[LEVER] {company}: {count} AI/ML jobs")
-        
+
         time.sleep(0.5)
-    
+
     print(f"[LEVER] Total: {len(jobs)} jobs")
     return jobs
 
@@ -206,14 +213,14 @@ def scrape_ashby(companies: list[str], config: dict) -> list[dict]:
     jobs = []
     max_hours = config.get("max_hours_old", 24)
     keywords = config.get("relevance_keywords", [])
-    
+
     for company in companies:
         url = f"https://api.ashbyhq.com/posting-api/job-board/{company}?includeCompensation=true"
         data = _get_json_safe(url)
-        
+
         if not data or "jobs" not in data:
             continue
-        
+
         count = 0
         for j in data["jobs"]:
             title = j.get("title", "")
@@ -221,29 +228,35 @@ def scrape_ashby(companies: list[str], config: dict) -> list[dict]:
             description = _clean_html(j.get("descriptionHtml", ""))
             location_name = j.get("location", "")
             job_url = j.get("jobUrl", j.get("applyUrl", ""))
-            
+
             if not _is_recent(published, max_hours):
                 continue
             if not _is_ai_ml_relevant(title, description, keywords):
                 continue
-            
-            jobs.append({
-                "title": title,
-                "company": company.replace("-", " ").title(),
-                "location": location_name if isinstance(location_name, str) else str(location_name),
-                "url": job_url,
-                "description": description,
-                "date_posted": published,
-                "job_type": "fulltime",
-                "source": "ashby",
-            })
+
+            jobs.append(
+                {
+                    "title": title,
+                    "company": company.replace("-", " ").title(),
+                    "location": (
+                        location_name
+                        if isinstance(location_name, str)
+                        else str(location_name)
+                    ),
+                    "url": job_url,
+                    "description": description,
+                    "date_posted": published,
+                    "job_type": "fulltime",
+                    "source": "ashby",
+                }
+            )
             count += 1
-        
+
         if count > 0:
             print(f"[ASHBY] {company}: {count} AI/ML jobs")
-        
+
         time.sleep(0.5)
-    
+
     print(f"[ASHBY] Total: {len(jobs)} jobs")
     return jobs
 
@@ -255,14 +268,14 @@ def scrape_remotive(config: dict) -> list[dict]:
     """Scrape Remotive's free public API for remote AI/ML jobs."""
     jobs = []
     keywords = config.get("relevance_keywords", [])
-    
+
     url = "https://remotive.com/api/remote-jobs?category=software-dev&limit=50"
     data = _get_json_safe(url)
-    
+
     if not data or "jobs" not in data:
         print("[REMOTIVE] Total: 0 jobs")
         return jobs
-    
+
     count = 0
     for j in data["jobs"]:
         title = j.get("title", "")
@@ -270,22 +283,24 @@ def scrape_remotive(config: dict) -> list[dict]:
         company = j.get("company_name", "")
         job_url = j.get("url", "")
         pub_date = j.get("publication_date", "")
-        
+
         if not _is_ai_ml_relevant(title, _clean_html(description), keywords):
             continue
-        
-        jobs.append({
-            "title": title,
-            "company": company,
-            "location": "Remote",
-            "url": job_url,
-            "description": _clean_html(description),
-            "date_posted": pub_date,
-            "job_type": "fulltime",
-            "source": "remotive",
-        })
+
+        jobs.append(
+            {
+                "title": title,
+                "company": company,
+                "location": "Remote",
+                "url": job_url,
+                "description": _clean_html(description),
+                "date_posted": pub_date,
+                "job_type": "fulltime",
+                "source": "remotive",
+            }
+        )
         count += 1
-    
+
     if count > 0:
         print(f"[REMOTIVE] {count} AI/ML jobs")
     print(f"[REMOTIVE] Total: {len(jobs)} jobs")
@@ -295,21 +310,21 @@ def scrape_remotive(config: dict) -> list[dict]:
 def scrape_all_ats(config: dict) -> list[dict]:
     """Run all ATS scrapers and combine results."""
     all_jobs = []
-    
+
     gh = config.get("greenhouse_companies", [])
     lv = config.get("lever_companies", [])
     ab = config.get("ashby_companies", [])
-    
+
     if gh:
         all_jobs.extend(scrape_greenhouse(gh, config))
     if lv:
         all_jobs.extend(scrape_lever(lv, config))
     if ab:
         all_jobs.extend(scrape_ashby(ab, config))
-    
+
     # Extra free API sources
     extra = config.get("extra_api_sources", {})
     if extra.get("remotive"):
         all_jobs.extend(scrape_remotive(config))
-    
+
     return all_jobs

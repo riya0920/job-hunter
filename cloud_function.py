@@ -9,6 +9,7 @@ gcloud scheduler jobs create pubsub job-scan-schedule \
     --message-body="run" \
     --location=us-central1
 """
+
 import functions_framework
 import base64
 from main import run

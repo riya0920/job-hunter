@@ -1,6 +1,7 @@
 """
 SQLite-backed storage for job deduplication and history tracking.
 """
+
 import sqlite3
 import hashlib
 import json
@@ -55,7 +56,7 @@ def is_duplicate(url: str, title: str, company: str) -> bool:
 
     row = conn.execute(
         "SELECT 1 FROM seen_jobs WHERE url_hash = ? OR title_company_hash = ?",
-        (url_hash, tc_hash)
+        (url_hash, tc_hash),
     ).fetchone()
     conn.close()
     return row is not None
@@ -67,12 +68,14 @@ def mark_seen(url: str, title: str, company: str, score: float = 0):
     url_hash = _hash(url)
     tc_hash = _hash(f"{title}|{company}")
 
-    conn.execute("""
+    conn.execute(
+        """
         INSERT OR IGNORE INTO seen_jobs 
         (url_hash, title_company_hash, title, company, url, first_seen, score)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (url_hash, tc_hash, title, company, url,
-          datetime.utcnow().isoformat(), score))
+    """,
+        (url_hash, tc_hash, title, company, url, datetime.utcnow().isoformat(), score),
+    )
     conn.commit()
     conn.close()
 
@@ -101,7 +104,7 @@ def get_stats():
     total = conn.execute("SELECT COUNT(*) FROM seen_jobs").fetchone()[0]
     today = conn.execute(
         "SELECT COUNT(*) FROM seen_jobs WHERE first_seen >= ?",
-        (datetime.utcnow().replace(hour=0, minute=0, second=0).isoformat(),)
+        (datetime.utcnow().replace(hour=0, minute=0, second=0).isoformat(),),
     ).fetchone()[0]
     conn.close()
     return {"total_jobs_tracked": total, "new_today": today}
