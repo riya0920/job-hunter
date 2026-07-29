@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Job Hunter heartbeat once a day
+
+[Timer]
+# 09:00 ET (13:00 UTC) daily.
+OnCalendar=*-*-* 13:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

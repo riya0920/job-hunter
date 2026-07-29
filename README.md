@@ -8,16 +8,17 @@
 
 ## What It Does
 
-Every 5 to 15 minutes, Job Hunter:
+Every 5 minutes, Job Hunter:
 
-1. **Scrapes 30+ job sources**: Greenhouse, Lever, Ashby ATS APIs (direct JSON, no auth needed) plus LinkedIn, Indeed, Glassdoor, Google Jobs, ZipRecruiter via JobSpy
-2. **Filters intelligently**: only AI/ML roles, entry-level/new grad (0 to 3 years), US-based
+1. **Scrapes job boards at the SOURCE, concurrently**: Greenhouse, Lever, Ashby, **SmartRecruiters, and Workday** ATS APIs (direct JSON, no auth) — ~100 boards swept in seconds. This is where jobs appear FIRST, before LinkedIn/Indeed syndication. (LinkedIn/Indeed via JobSpy are still available as an opt-in backup, `--with-aggregators`, run only a few times a day.)
+2. **Filters intelligently**: AI/ML **and** software-engineering roles, entry-level/new grad (0 to 3 years), US-based. ML/AI roles score a notch above general SWE so they float to the top.
 3. **Scores against your resume**: TF-IDF keyword matching plus AI/ML relevance scoring
-4. **Detects H1B sponsorship**: keyword analysis on job descriptions
-5. **Deduplicates**: SQLite-backed URL + title/company hashing (never see the same job twice)
-6. **Writes to Google Sheets**: color-coded by match score, with clickable Apply links
-7. **Emails you a digest**: beautifully formatted HTML with scores, H1B status, and skills match
-8. **Push notifications**: instant alerts via ntfy.sh for high-match jobs (optional)
+4. **Flags freshness**: shows "posted X min ago" and marks anything posted within 15 min as **🔥 URGENT**, floated to the top so you hit the truly-fresh ones first
+5. **Cold-start guard**: the first time it polls a company, it silently seeds that board's existing jobs — so adding a company never floods you. Only jobs posted *after* that first poll alert you.
+6. **Detects H1B sponsorship**: keyword analysis on job descriptions
+7. **Deduplicates**: SQLite-backed URL + title/company hashing (never see the same job twice)
+8. **Instant-apply assist**: for strong matches, drafts a one-line résumé-grounded pitch via Gemini and drops it into the alert — so you apply within minutes, not hours
+9. **Writes to Google Sheets**, **emails an HTML digest**, and **pushes ntfy alerts on every match** (with a daily heartbeat so silence never means "broken")
 
 ## Quick Start (5 minutes)
 
@@ -119,12 +120,45 @@ gcloud scheduler jobs create pubsub job-scan-schedule \
 
 Free tier: 2M invocations per month plus 400K GB-seconds. This uses approximately 8,640 invocations per month, well within limits.
 
-### Option C: Oracle Cloud Always Free VM (Most Powerful, any interval)
+### Option C: Oracle Cloud Always-Free VM ⭐ RECOMMENDED (true 5-min interval)
 
-1. Sign up at [cloud.oracle.com](https://cloud.oracle.com) (Always Free tier)
-2. Create an ARM VM (4 OCPU, 24 GB RAM, free forever)
-3. SSH in, clone repo, install deps
-4. Add to crontab: `*/5 * * * * cd /home/ubuntu/job-hunter && python main.py >> /var/log/job-hunter.log 2>&1`
+GitHub Actions cron is frequently **late or skipped** — which defeats the whole
+point of being early. An always-on VM with systemd timers fires *on time*, every
+time. Everything is scripted in [`deploy/`](deploy/).
+
+1. Sign up at [cloud.oracle.com](https://cloud.oracle.com) (Always Free tier) and
+   create an **ARM VM** (Ubuntu 22.04/24.04, 4 OCPU / 24 GB, free forever).
+2. SSH in and clone:
+   ```bash
+   git clone https://github.com/riya0920/job-hunter.git /home/ubuntu/job-hunter
+   cd /home/ubuntu/job-hunter
+   ```
+3. Create three files in the repo root:
+   * `.env` — copy from [`deploy/jobhunter.env.example`](deploy/jobhunter.env.example) and fill in secrets
+   * `credentials.json` — your Google service-account key
+   * `resume.txt` — your résumé text
+4. Run the installer (creates the venv, installs deps, installs + enables the timers):
+   ```bash
+   bash deploy/setup.sh
+   ```
+
+That's it. Three systemd timers are now running:
+
+| Timer | What | When |
+|-------|------|------|
+| `jobhunter.timer` | Fast ATS-direct scan | **every 5 min** |
+| `jobhunter-aggregators.timer` | LinkedIn/Indeed backup (JobSpy) | 3×/day |
+| `jobhunter-heartbeat.timer` | "still alive" ping | daily |
+
+Handy commands:
+```bash
+systemctl list-timers | grep jobhunter    # next run times
+sudo systemctl start jobhunter.service     # run a scan right now
+journalctl -u jobhunter.service -f         # live logs
+```
+The **first run seeds the DB silently** (cold-start guard) — real alerts begin on
+the second run. Because the DB lives on the VM, dedup persists naturally across
+runs (no cache juggling like GitHub Actions needs).
 
 ## Customization
 

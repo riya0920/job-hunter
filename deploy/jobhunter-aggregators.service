@@ -1,0 +1,12 @@
+[Unit]
+Description=Job Hunter — aggregator backup scan (LinkedIn/Indeed via JobSpy)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/job-hunter
+EnvironmentFile=/home/ubuntu/job-hunter/.env
+ExecStart=/home/ubuntu/job-hunter/.venv/bin/python main.py --with-aggregators
+TimeoutStartSec=900

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run Job Hunter fast scan every 5 minutes
+
+[Timer]
+# Every 5 minutes, all day. Persistent catches up a missed run after a reboot.
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=15s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

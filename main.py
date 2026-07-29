@@ -9,10 +9,14 @@ Main orchestrator that runs the full pipeline:
 4. Send email + push notifications
 
 Usage:
-    python main.py              # Full run
-    python main.py --dry-run    # Scrape & score only, no notifications
-    python main.py --ats-only   # Only scrape ATS APIs (faster, always reliable)
-    python main.py --stats      # Show database stats
+    python main.py                  # Fast loop: ATS-direct only (default) — this
+                                    #   is what the 5-min cron runs. Fast, reliable,
+                                    #   the source of truth, beats LinkedIn.
+    python main.py --with-aggregators  # Also scrape LinkedIn/Indeed via JobSpy
+                                    #   (slow, fragile — run a few times a day only)
+    python main.py --dry-run        # Scrape & score only, no notifications
+    python main.py --heartbeat      # Send a 'still alive' ping and exit
+    python main.py --stats          # Show database stats
 """
 
 import os
@@ -38,8 +42,13 @@ def load_config() -> dict:
         return yaml.safe_load(f)
 
 
-def run(dry_run: bool = False, ats_only: bool = False):
-    """Execute the full job hunting pipeline."""
+def run(dry_run: bool = False, with_aggregators: bool = False):
+    """Execute the job hunting pipeline.
+
+    By default this runs ATS-direct only — the fast, reliable source of truth
+    that beats LinkedIn. Pass with_aggregators=True to ALSO scrape
+    LinkedIn/Indeed via JobSpy (slow + fragile; run only a few times a day).
+    """
     start = time.time()
     config = load_config()
 
@@ -51,25 +60,19 @@ def run(dry_run: bool = False, ats_only: bool = False):
     print("\n📡 STEP 1: Scraping job sources...")
     all_raw_jobs = []
 
-    # Always scrape ATS APIs (fast, reliable, free)
+    # Always scrape ATS APIs (fast, reliable, free — the early edge)
     from scrapers.ats_scraper import scrape_all_ats
 
     ats_jobs = scrape_all_ats(config)
     all_raw_jobs.extend(ats_jobs)
 
-    # Scrape aggregators unless --ats-only
-    if not ats_only:
+    # Aggregators only on explicit opt-in (safety-net backup, not the fast loop)
+    if with_aggregators:
         from scrapers.jobspy_scraper import scrape_aggregators, scrape_linkedin_direct
 
         queries = config.get("search_queries", [])
-
-        # JobSpy (Indeed/LinkedIn/Google) — slow, use core queries only
-        agg_jobs = scrape_aggregators(queries[:10], config)
-        all_raw_jobs.extend(agg_jobs)
-
-        # LinkedIn direct — fast, use ALL queries for max coverage
-        li_jobs = scrape_linkedin_direct(queries, config)
-        all_raw_jobs.extend(li_jobs)
+        all_raw_jobs.extend(scrape_aggregators(queries[:10], config))
+        all_raw_jobs.extend(scrape_linkedin_direct(queries, config))
 
     print(f"\n   Total raw jobs collected: {len(all_raw_jobs)}")
 
@@ -116,17 +119,25 @@ def run(dry_run: bool = False, ats_only: bool = False):
         print(f"\n⏱  Completed in {elapsed:.1f}s")
         return
 
-    # ── Step 3: Write to Google Sheets ───────────────────────────
-    print("\n📊 STEP 3: Writing to Google Sheets...")
+    # ── Step 3: Instant-apply assist ─────────────────────────────
+    # Draft resume-grounded pitches for the strongest matches so you can apply
+    # within minutes. Skips silently if no GEMINI_API_KEY.
+    print("\n✍️  STEP 3: Drafting instant-apply pitches...")
+    from processors.tailor import add_tailored_pitches
+
+    processed_jobs = add_tailored_pitches(processed_jobs, config)
+
+    # ── Step 4: Write to Google Sheets ───────────────────────────
+    print("\n📊 STEP 4: Writing to Google Sheets...")
     from storage.sheets import write_jobs
 
     written = write_jobs(processed_jobs)
 
-    # ── Step 4: Notify ───────────────────────────────────────────
-    print("\n📬 STEP 4: Sending notifications...")
+    # ── Step 5: Notify ───────────────────────────────────────────
+    print("\n📬 STEP 5: Sending notifications...")
     from notifications.notifier import notify
 
-    result = notify(processed_jobs)
+    result = notify(processed_jobs, config)
 
     # ── Summary ──────────────────────────────────────────────────
     elapsed = time.time() - start
@@ -149,14 +160,34 @@ def show_stats():
     print(f"   New today:          {stats['new_today']}")
 
 
+def send_heartbeat():
+    """Send a 'still alive' ping (run once/day via a separate timer)."""
+    config = load_config()
+    from storage.db import get_stats
+    from notifications.notifier import send_heartbeat as _hb
+
+    boards = (
+        len(config.get("greenhouse_companies", []))
+        + len(config.get("lever_companies", []))
+        + len(config.get("ashby_companies", []))
+        + len(config.get("smartrecruiters_companies", []))
+        + len(config.get("workday_companies", []))
+    )
+    _hb(boards, get_stats()["total_jobs_tracked"])
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
 
     if "--stats" in args:
         show_stats()
+    elif "--heartbeat" in args:
+        send_heartbeat()
     elif "--help" in args or "-h" in args:
         print(__doc__)
     else:
-        dry_run = "--dry-run" in args
-        ats_only = "--ats-only" in args
-        run(dry_run=dry_run, ats_only=ats_only)
+        # --ats-only kept as a no-op alias since ATS-only is now the default.
+        run(
+            dry_run="--dry-run" in args,
+            with_aggregators="--with-aggregators" in args,
+        )

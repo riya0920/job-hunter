@@ -1,0 +1,12 @@
+[Unit]
+Description=Job Hunter — daily heartbeat
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/job-hunter
+EnvironmentFile=/home/ubuntu/job-hunter/.env
+ExecStart=/home/ubuntu/job-hunter/.venv/bin/python main.py --heartbeat
+TimeoutStartSec=120

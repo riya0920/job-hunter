@@ -39,6 +39,11 @@ def init_db():
             approvals INTEGER DEFAULT 0,
             last_updated TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS boards (
+            board_key TEXT PRIMARY KEY,
+            initialized_at TEXT
+        );
     """)
     conn.commit()
     conn.close()
@@ -75,6 +80,37 @@ def mark_seen(url: str, title: str, company: str, score: float = 0):
         VALUES (?, ?, ?, ?, ?, ?, ?)
     """,
         (url_hash, tc_hash, title, company, url, datetime.utcnow().isoformat(), score),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_first_seen(url: str) -> str | None:
+    """Return the ISO timestamp when we first saw this job, or None."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT first_seen FROM seen_jobs WHERE url_hash = ?", (_hash(url),)
+    ).fetchone()
+    conn.close()
+    return row["first_seen"] if row else None
+
+
+def is_board_initialized(board_key: str) -> bool:
+    """True if we've polled this company's board at least once before."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT 1 FROM boards WHERE board_key = ?", (board_key,)
+    ).fetchone()
+    conn.close()
+    return row is not None
+
+
+def mark_board_initialized(board_key: str):
+    """Record that a board has completed its first (silent) poll."""
+    conn = get_connection()
+    conn.execute(
+        "INSERT OR IGNORE INTO boards (board_key, initialized_at) VALUES (?, ?)",
+        (board_key, datetime.utcnow().isoformat()),
     )
     conn.commit()
     conn.close()

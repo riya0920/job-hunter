@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Job Hunter aggregator backup 3x/day
+
+[Timer]
+# 08:00, 13:00, 18:00 ET (12:00, 17:00, 22:00 UTC). Infrequent on purpose:
+# hitting LinkedIn/Indeed hard gets your IP blocked.
+OnCalendar=*-*-* 12,17,22:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Job Hunter — fast ATS-direct scan
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/job-hunter
+EnvironmentFile=/home/ubuntu/job-hunter/.env
+ExecStart=/home/ubuntu/job-hunter/.venv/bin/python main.py
+# A slow run will NOT stack: systemd won't start this again while it's running.
+TimeoutStartSec=300

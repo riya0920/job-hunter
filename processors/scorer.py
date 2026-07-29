@@ -5,8 +5,35 @@ scores resume match using TF-IDF + semantic similarity.
 
 import os
 import re
+from datetime import datetime, timezone
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+from scrapers.ats_scraper import _parse_date
+
+
+def compute_freshness(date_posted: str, config: dict) -> dict:
+    """Turn a raw post date into human freshness + an urgency flag.
+
+    Falls back gracefully when the date is unknown.
+    """
+    urgent_minutes = config.get("freshness", {}).get("urgent_minutes", 15)
+    dt = _parse_date(date_posted)
+    if dt is None:
+        return {"posted_ago": "recently", "minutes_old": None, "is_urgent": False}
+
+    minutes = max(0, int((datetime.now(timezone.utc) - dt).total_seconds() // 60))
+    if minutes < 60:
+        ago = f"{minutes} min ago"
+    elif minutes < 60 * 48:
+        ago = f"{minutes // 60} hr ago"
+    else:
+        ago = f"{minutes // (60 * 24)} days ago"
+    return {
+        "posted_ago": ago,
+        "minutes_old": minutes,
+        "is_urgent": minutes <= urgent_minutes,
+    }
 
 
 def load_resume(path: str = None) -> str:
@@ -241,6 +268,40 @@ def score_title_match(title: str) -> float:
     return 0.0
 
 
+def score_software_relevance(title: str, description: str, config: dict) -> float:
+    """Relevance for general software roles, based on software_keywords. 0-100."""
+    text = f"{title} {description}".lower()
+    kws = config.get("software_keywords", [])
+    if not kws:
+        return 50.0
+    matches = sum(1 for kw in kws if kw.lower() in text)
+    return round(min(100, (matches / min(3, len(kws))) * 100), 1)
+
+
+def score_software_title(title: str) -> float:
+    """Title bonus for software roles (0-25), mirroring score_title_match."""
+    t = title.lower()
+    strong = [
+        "software engineer",
+        "software developer",
+        "backend engineer",
+        "frontend engineer",
+        "full stack",
+        "full-stack",
+        "fullstack",
+        "platform engineer",
+        "site reliability",
+        "devops engineer",
+        "cloud engineer",
+        "systems engineer",
+    ]
+    if any(s in t for s in strong):
+        return 25.0
+    if any(s in t for s in ["engineer", "developer"]):
+        return 12.0
+    return 0.0
+
+
 def score_relevance(title: str, description: str, config: dict) -> float:
     """
     Score how relevant a job is to AI/ML based on keyword density.
@@ -463,6 +524,33 @@ def is_us_location(location: str) -> bool:
     return True
 
 
+def is_staffing(title: str, company: str, description: str, config: dict) -> bool:
+    """Detect staffing / recruiting-agency reposts so they never alert.
+
+    Uses two signals:
+      1. Strong staffing words in the COMPANY NAME (e.g. "Staffing", "Recruiting").
+      2. Tell-tale phrases in the DESCRIPTION that only staffing/body-shop posts
+         use ("our client", "corp to corp", "C2C", "W2 only", "end client"...).
+    Name-only matching is deliberately narrow to avoid nuking real employers
+    like "Palantir Technologies" or "Scale Solutions".
+    """
+    cfg = config.get("staffing", {})
+    if not cfg.get("enabled", True):
+        return False
+
+    name = (company or "").lower()
+    for pat in cfg.get("exclude_company_patterns", []):
+        if pat.lower() in name:
+            return True
+
+    text = f"{title} {description}".lower()
+    for pat in cfg.get("exclude_description_patterns", []):
+        if pat.lower() in text:
+            return True
+
+    return False
+
+
 def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
     """
     Full processing pipeline:
@@ -472,10 +560,38 @@ def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
     4. Score resume match
     5. Sort by score
     """
-    from storage.db import is_duplicate, mark_seen
+    from storage.db import (
+        is_duplicate,
+        mark_seen,
+        is_board_initialized,
+        mark_board_initialized,
+    )
 
     processed = []
     seen_urls = set()
+
+    # ── Cold-start guard ────────────────────────────────────────────────
+    # The first time we ever poll a company's board, silently seed its current
+    # postings as "seen" (no alert) so a newly added company never floods you
+    # with its whole backlog marked "new". Boards present in this batch that
+    # we've never seen before are collected here and marked initialized at the
+    # end of processing.
+    silent_first_poll = config.get("cold_start", {}).get("silent_first_poll", True)
+    boards_in_batch = set()
+    silent_boards = set()
+    if silent_first_poll:
+        for job in raw_jobs:
+            bkey = f"{job.get('source', '')}:{job.get('company', '')}"
+            if bkey in boards_in_batch:
+                continue
+            boards_in_batch.add(bkey)
+            if not is_board_initialized(bkey):
+                silent_boards.add(bkey)
+        if silent_boards:
+            print(
+                f"[PROCESSOR] Cold-start: silently seeding {len(silent_boards)} "
+                f"new board(s) — their existing jobs won't alert."
+            )
 
     for job in raw_jobs:
         url = job.get("url", "")
@@ -488,6 +604,12 @@ def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
             continue
         seen_urls.add(url)
 
+        # Cold-start: a board we've never polled — seed silently, don't alert.
+        bkey = f"{job.get('source', '')}:{company}"
+        if bkey in silent_boards:
+            mark_seen(url, title, company, score=0)
+            continue
+
         # Skip if we've seen this before
         if is_duplicate(url, title, company):
             continue
@@ -498,41 +620,61 @@ def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
             mark_seen(url, title, company, score=0)
             continue
 
+        # Filter staffing / recruiting-agency reposts
+        if is_staffing(title, company, description, config):
+            mark_seen(url, title, company, score=0)
+            continue
+
         # Check experience level
         exp = check_experience_level(title, description, config)
         if not exp["is_match"]:
             mark_seen(url, title, company, score=0)
             continue
 
-        # Check AI/ML relevance
-        relevance = score_relevance(title, description, config)
-        if relevance < 20:
-            mark_seen(url, title, company, score=0)
-            continue
-
-        # Score resume match — multi-signal approach
-        keyword_score = score_keyword_match(description)
+        category = job.get("role_category", "ml")
+        keyword_score = score_keyword_match(description)  # TF-IDF vs résumé
         skills_score = score_skills_overlap(description)
-        title_bonus = score_title_match(title)
 
-        # Combined score:
-        # 15% TF-IDF keyword overlap (broad similarity)
-        # 25% AI/ML relevance (are the right topics mentioned?)
-        # 35% Skills overlap (specific technical skills match)
-        # 25% Title match bonus (is this actually a target role?)
-        base_score = (
-            (0.15 * keyword_score)
-            + (0.25 * relevance)
-            + (0.35 * skills_score)
-            + (0.25 * title_bonus * 4)
-        )
-        combined_score = min(100, base_score)
+        if category == "software":
+            # Software roles are scored on software signals (the ML-tuned
+            # relevance would zero them out). Kept a notch below ML overall.
+            relevance = score_software_relevance(title, description, config)
+            title_bonus = score_software_title(title)
+            if relevance < 10 and title_bonus == 0:
+                mark_seen(url, title, company, score=0)
+                continue
+            base_score = (
+                (0.15 * keyword_score)
+                + (0.30 * relevance)
+                + (0.20 * skills_score)
+                + (0.30 * title_bonus * 4)
+            )
+            combined_score = min(100, base_score) * 0.9
+        else:
+            # AI/ML path
+            relevance = score_relevance(title, description, config)
+            if relevance < 20:
+                mark_seen(url, title, company, score=0)
+                continue
+            title_bonus = score_title_match(title)
+            # 15% TF-IDF keyword overlap / 25% AI-ML relevance /
+            # 35% skills overlap / 25% title-match bonus
+            base_score = (
+                (0.15 * keyword_score)
+                + (0.25 * relevance)
+                + (0.35 * skills_score)
+                + (0.25 * title_bonus * 4)
+            )
+            combined_score = min(100, base_score)
 
         # H1B check
         h1b = check_h1b_status(description, config)
 
         # Skills extraction
         skills = extract_skills_match(description, config)
+
+        # Freshness — real "posted X ago" + urgency flag
+        fresh = compute_freshness(job.get("date_posted", ""), config)
 
         # Build processed job
         processed_job = {
@@ -546,13 +688,23 @@ def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
             "experience_level": exp["level"],
             "skills_match": skills,
             "description_preview": description[:300] if description else "",
+            "role_category": job.get("role_category", "ml"),
+            "posted_ago": fresh["posted_ago"],
+            "minutes_old": fresh["minutes_old"],
+            "is_urgent": fresh["is_urgent"],
         }
 
         processed.append(processed_job)
         mark_seen(url, title, company, score=combined_score)
 
-    # Sort by score descending
-    processed.sort(key=lambda j: j["score"], reverse=True)
+    # Record any first-time boards as initialized now that their backlog is seeded.
+    for bkey in silent_boards:
+        mark_board_initialized(bkey)
+    for bkey in boards_in_batch:
+        mark_board_initialized(bkey)
+
+    # Sort: urgent first, then by score.
+    processed.sort(key=lambda j: (j.get("is_urgent", False), j["score"]), reverse=True)
 
     print(
         f"[PROCESSOR] {len(processed)} new jobs after filtering (from {len(raw_jobs)} raw)"

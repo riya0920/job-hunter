@@ -77,17 +77,27 @@ def send_email(jobs: list[dict]) -> bool:
         score_class = "high" if score >= 70 else ("medium" if score >= 50 else "low")
         h1b = j.get("h1b_status", "Unknown")
         h1b_class = "yes" if "Sponsor" in h1b else ("no" if "No" in h1b else "unknown")
+        urgent = (
+            '<span class="score score-high">🔥 URGENT · just posted</span> '
+            if j.get("is_urgent")
+            else ""
+        )
+        cat = "ML/AI" if j.get("role_category", "ml") == "ml" else "Software"
+        tailored = ""
+        if j.get("tailored_pitch"):
+            tailored = f'<div class="skills">✍️ Pitch: {j["tailored_pitch"]}</div>'
 
         return f"""
             <div class="job job-{tier}">
-                <p class="job-title">{j.get('title', 'Unknown')}</p>
+                <p class="job-title">{urgent}{j.get('title', 'Unknown')}</p>
                 <p class="job-company">{j.get('company', 'Unknown')} • {j.get('location', 'US')}</p>
                 <div class="job-meta">
                     <span class="score score-{score_class}">{score}% match</span>
                     <span class="h1b-badge h1b-{h1b_class}">H1B: {h1b}</span>
-                    • {j.get('experience_level', '')} • {j.get('source', '')}
+                    • {cat} • posted {j.get('posted_ago', 'recently')} • {j.get('experience_level', '')} • {j.get('source', '')}
                 </div>
                 <div class="skills">Skills: {j.get('skills_match', 'N/A')}</div>
+                {tailored}
                 <a href="{j.get('url', '#')}" class="apply-btn">Apply Now →</a>
             </div>
         """
@@ -139,30 +149,41 @@ def send_email(jobs: list[dict]) -> bool:
 def send_push(jobs: list[dict]) -> bool:
     """
     Send push notification via ntfy.sh (free, instant, mobile app available).
-    Includes clickable links: tap notification → top job's apply page,
-    plus an action button to open the full Google Sheet.
+    Pushes on EVERY match (not just high-score) so you react the instant a job
+    is posted. Urgent (just-posted) jobs are called out first.
+    Tapping the notification opens the top job's apply page.
     """
     topic = os.getenv("NTFY_TOPIC")
     if not topic:
         return False
 
-    high = [j for j in jobs if j.get("score", 0) >= 70]
-
-    if not high:
-        # Only push for high-priority matches
+    if not jobs:
         return False
 
+    # Urgent (just-posted) jobs lead; otherwise highest score leads.
+    jobs = sorted(
+        jobs,
+        key=lambda j: (j.get("is_urgent", False), j.get("score", 0)),
+        reverse=True,
+    )
+    urgent_count = sum(1 for j in jobs if j.get("is_urgent"))
+
     try:
-        title = f"{len(high)} High-Match AI/ML Jobs!"
+        lead = f"🔥 {urgent_count} JUST POSTED · " if urgent_count else ""
+        title = f"{lead}{len(jobs)} New Job{'s' if len(jobs) != 1 else ''}"
         body_lines = []
-        for j in high[:5]:
-            body_lines.append(f"- {j['title']} @ {j['company']} ({j['score']}%)")
+        for j in jobs[:5]:
+            flag = "🔥 " if j.get("is_urgent") else ""
+            body_lines.append(
+                f"{flag}{j['title']} @ {j['company']} "
+                f"({j.get('score', 0)}%, {j.get('posted_ago', 'recently')})"
+            )
         body = "\n".join(body_lines)
-        if len(high) > 5:
-            body += f"\n...and {len(high) - 5} more"
+        if len(jobs) > 5:
+            body += f"\n...and {len(jobs) - 5} more"
 
         # Top job's apply URL — tapping the notification opens this
-        top_url = high[0].get("url", "")
+        top_url = jobs[0].get("url", "")
 
         # Google Sheet link for the "View All" action button
         sheet_id = os.getenv("GOOGLE_SHEETS_ID", "")
@@ -183,7 +204,7 @@ def send_push(jobs: list[dict]) -> bool:
 
         # Add action buttons for each top job (up to 3) + Google Sheet
         actions = []
-        for j in high[:3]:
+        for j in jobs[:3]:
             url = j.get("url", "")
             if url:
                 label = f"Apply: {j['company']}"[:40]
@@ -200,11 +221,38 @@ def send_push(jobs: list[dict]) -> bool:
             headers=headers,
             timeout=10,
         )
-        print(f"[NTFY] Push sent for {len(high)} high-match jobs")
+        print(f"[NTFY] Push sent for {len(jobs)} jobs ({urgent_count} urgent)")
         return True
 
     except Exception as e:
         print(f"[NTFY] Failed: {e}")
+        return False
+
+
+def send_heartbeat(boards_scanned: int, total_tracked: int) -> bool:
+    """A low-priority daily 'still alive' ping so silence never means 'broken'."""
+    topic = os.getenv("NTFY_TOPIC")
+    if not topic:
+        return False
+    try:
+        requests.post(
+            f"https://ntfy.sh/{topic}",
+            data=(
+                f"Job Hunter is alive. Scanned {boards_scanned} boards at "
+                f"{_get_eastern_time()}. Tracking {total_tracked} jobs total."
+            ).encode("utf-8"),
+            headers={
+                "Title": "💚 Job Hunter heartbeat".encode("utf-8"),
+                "Priority": "min",
+                "Tags": "green_heart",
+                "Content-Type": "text/plain; charset=utf-8",
+            },
+            timeout=10,
+        )
+        print("[NTFY] Heartbeat sent")
+        return True
+    except Exception as e:
+        print(f"[NTFY] Heartbeat failed: {e}")
         return False
 
 
@@ -236,20 +284,26 @@ def send_no_jobs_push() -> bool:
         return False
 
 
-def notify(jobs: list[dict]) -> dict:
+def notify(jobs: list[dict], config: dict | None = None) -> dict:
     """Send all notifications for a batch of new jobs."""
+    config = config or {}
+    notif_cfg = config.get("notifications", {})
+    push_when_empty = notif_cfg.get("push_when_empty", False)
+
     if not jobs:
         print("[NOTIFY] No new jobs to notify about")
-        send_no_jobs_push()
-        return {"email": False, "push": True}
+        if push_when_empty:
+            send_no_jobs_push()
+        return {"email": False, "push": push_when_empty}
 
     min_score = float(os.getenv("NOTIFY_MIN_SCORE", 30))
     notify_jobs = [j for j in jobs if j.get("score", 0) >= min_score]
 
     if not notify_jobs:
         print(f"[NOTIFY] No jobs above score threshold ({min_score})")
-        send_no_jobs_push()
-        return {"email": False, "push": True}
+        if push_when_empty:
+            send_no_jobs_push()
+        return {"email": False, "push": push_when_empty}
 
     email_sent = send_email(notify_jobs)
     push_sent = send_push(notify_jobs)
