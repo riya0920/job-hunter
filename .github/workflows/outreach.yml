@@ -1,0 +1,73 @@
+# .github/workflows/outreach.yml
+# Outreach Assistant — Path B poller.
+# Every 4 hours: read-only Gmail scan for application confirmations →
+# extract → classify → match → draft → queue (NEEDS_REVIEW) → digest email.
+# Nothing is ever sent on Riya's behalf. Gmail scope is gmail.readonly only.
+
+name: Outreach Assistant
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'   # every 4 hours, on the hour (UTC)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print the queue instead of writing to Sheets'
+        type: boolean
+        default: false
+
+jobs:
+  outreach:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Reuse the same dedup DB so the Gmail watermark + 14-day dedup persist.
+      - name: Restore job database
+        uses: actions/cache/restore@v4
+        with:
+          path: jobs.db
+          key: jobs-db-${{ github.run_id }}
+          restore-keys: |
+            jobs-db-
+
+      - name: Run outreach poller (Path B)
+        env:
+          # Sheets (service account) — reused from job-hunter
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+          GOOGLE_CREDENTIALS_FILE: credentials.json
+          # Gmail read-only OAuth (reused from job-tracker) — refresh token only
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          # Claude for extraction / classify / draft
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Digest email to Riya herself (same Gmail app password as the notifier)
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+        run: |
+          echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" | base64 -d > credentials.json
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            python -m outreach.cli poll --source applied --dry-run
+          else
+            python -m outreach.cli poll --source applied
+          fi
+
+      - name: Save job database
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: jobs.db
+          key: jobs-db-${{ github.run_id }}

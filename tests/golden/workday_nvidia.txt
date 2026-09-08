@@ -1,0 +1,4 @@
+Subject: Thank you for your application to NVIDIA
+From: NVIDIA <talent@myworkday.com>
+
+Thank you for applying to Machine Learning Engineer at NVIDIA. We have received your application and our team will review it shortly.

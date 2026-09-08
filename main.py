@@ -127,6 +127,27 @@ def run(dry_run: bool = False, with_aggregators: bool = False):
 
     processed_jobs = add_tailored_pitches(processed_jobs, config)
 
+    # ── Step 3b: Outreach Assistant (Path A) ─────────────────────
+    # Opt-in extension: queue human-in-the-loop outreach drafts for the strongest
+    # discovered matches. OFF by default (set OUTREACH_DISCOVERED=1). Fully
+    # guarded — any failure here must never break the discovery loop. Nothing is
+    # ever sent; drafts land in the Sheet's Outreach tab as NEEDS_REVIEW.
+    if os.getenv("OUTREACH_DISCOVERED") == "1":
+        print("\n🤝 STEP 3b: Queuing outreach drafts (Path A)...")
+        try:
+            from outreach import digest as o_digest
+            from outreach import pipeline as o_pipeline
+            from outreach import queue as o_queue
+
+            min_score = float(os.getenv("OUTREACH_MIN_SCORE", 60))
+            cap = int(os.getenv("OUTREACH_MAX_DRAFTS", 10))
+            candidates = [j for j in processed_jobs if j.get("score", 0) >= min_score][:cap]
+            o_result = o_pipeline.process_discovered(candidates)
+            o_queue.write_items(o_result["items"])
+            o_digest.send_digest(o_result["items"], o_result["warnings"], o_result["dropped"])
+        except Exception as e:
+            print(f"   [OUTREACH] Skipped (non-fatal): {e}")
+
     # ── Step 4: Write to Google Sheets ───────────────────────────
     print("\n📊 STEP 4: Writing to Google Sheets...")
     from storage.sheets import write_jobs

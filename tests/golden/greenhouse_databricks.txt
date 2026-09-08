@@ -1,0 +1,4 @@
+Subject: Your application to Databricks
+From: Databricks <no-reply@greenhouse.io>
+
+Thank you for applying to Databricks. We have received your application for the Software Engineer, New Grad position at Databricks.

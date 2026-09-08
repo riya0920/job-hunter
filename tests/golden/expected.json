@@ -1,0 +1,7 @@
+{
+  "workday_nvidia.txt":        { "company": "NVIDIA",     "role": "Machine Learning Engineer",     "ats": "workday" },
+  "greenhouse_databricks.txt": { "company": "Databricks", "role": "Software Engineer, New Grad",    "ats": "greenhouse" },
+  "lever_stripe.txt":          { "company": "Stripe",     "role": "Data Scientist",                "ats": "lever" },
+  "icims_boeing.txt":          { "company": "Boeing",     "role": "Associate Software Engineer",   "ats": "icims" },
+  "successfactors_merck.txt":  { "company": "Merck",      "role": "Data Analyst, University Grad", "ats": "successfactors" }
+}
