@@ -1,0 +1,4 @@
+Subject: Thank you for applying to Stripe
+From: Stripe <no-reply@hire.lever.co>
+
+Hi Riya, thank you for applying to the Data Scientist position at Stripe. We will be in touch.
