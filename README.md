@@ -216,7 +216,7 @@ main.py                    ← Orchestrator
 | JobSpy (LinkedIn/Indeed) | Free, open source |
 | **Total** | **$0/month** |
 
-Optional: Anthropic API for LLM-powered scoring (approximately $3 to $10/month at 100 jobs/day). Not required. The TF-IDF plus relevance scoring works well without it.
+Optional: a Gemini API key (`GEMINI_API_KEY`) to draft a one-line, resume-grounded application pitch per top match (see `processors/tailor.py`). This affects only the optional pitch text, not scoring — scoring is TF-IDF + keyword/relevance heuristics and runs fully offline. Skipped silently when no key is set.
 
 ## License
 

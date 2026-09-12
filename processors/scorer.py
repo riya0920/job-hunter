@@ -1,6 +1,6 @@
 """
 Job processor — filters by experience level, detects H1B status,
-scores resume match using TF-IDF + semantic similarity.
+scores resume match using TF-IDF cosine similarity + weighted keyword/skill heuristics.
 """
 
 import os
