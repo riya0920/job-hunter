@@ -1,6 +1,6 @@
 # 🎯 Job Hunter
 
-**Automated AI/ML job discovery and alerting system. Finds freshly posted AI/ML jobs across 30+ sources, scores them against your resume, writes to Google Sheets, and notifies you within minutes. Runs serverlessly for $0/month.**
+**Automated AI/ML job discovery and alerting system. Finds freshly posted AI/ML jobs across ~100 boards on five ATS platforms (Greenhouse, Lever, Ashby, SmartRecruiters, Workday) plus Wellfound, Remotive, and USAJobs, scores them against your resume, writes to Google Sheets, and notifies you within minutes. Runs serverlessly for $0/month.**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/riya0920/job-hunter/blob/main/LICENSE)
