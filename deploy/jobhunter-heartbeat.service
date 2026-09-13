@@ -1,5 +1,5 @@
 [Unit]
-Description=Job Hunter — daily heartbeat
+Description=Job Hunter: daily heartbeat
 After=network-online.target
 Wants=network-online.target
 

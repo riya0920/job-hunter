@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# Job Hunter — one-time setup on an Oracle Cloud Always-Free ARM VM
+# Job Hunter: one-time setup on an Oracle Cloud Always-Free ARM VM
 # (Ubuntu 22.04/24.04). Run as the 'ubuntu' user.
 #
 #   bash deploy/setup.sh
@@ -8,7 +8,7 @@
 # Before running, make sure these files exist in the repo root:
 #   .env              (copy from deploy/jobhunter.env.example, fill in secrets)
 #   credentials.json  (Google service-account key for Sheets)
-#   resume.txt        (your resume text — used for scoring + tailored pitches)
+#   resume.txt        (your resume text, used for scoring + tailored pitches)
 # ============================================================
 set -euo pipefail
 
@@ -27,7 +27,7 @@ python3 -m venv .venv
 echo "==> Checking required files"
 for f in .env credentials.json resume.txt; do
   if [[ ! -f "$APP_DIR/$f" ]]; then
-    echo "!! Missing $APP_DIR/$f — create it before starting the timers."
+    echo "!! Missing $APP_DIR/$f. Create it before starting the timers."
   fi
 done
 
@@ -51,5 +51,5 @@ echo "   systemctl list-timers | grep jobhunter     # see next run times"
 echo "   sudo systemctl start jobhunter.service     # run one scan right now"
 echo "   journalctl -u jobhunter.service -f         # live logs"
 echo ""
-echo "   First run seeds the DB SILENTLY (cold-start guard) — you won't get a"
+echo "   First run seeds the DB SILENTLY (cold-start guard): you won't get a"
 echo "   flood. Real alerts begin from the second run onward."

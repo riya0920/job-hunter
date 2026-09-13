@@ -1,5 +1,5 @@
 """
-Notification system — Email (Gmail SMTP) + Push (ntfy.sh).
+Notification system: Email (Gmail SMTP) + Push (ntfy.sh).
 """
 
 import os
@@ -10,7 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timezone, timedelta
 
 # Eastern Time (UTC-4 EDT, UTC-5 EST)
-EASTERN = timezone(timedelta(hours=-4))  # EDT — change to -5 after Nov daylight saving
+EASTERN = timezone(timedelta(hours=-4))  # EDT; change to -5 after Nov daylight saving
 
 
 def _get_eastern_time() -> str:
@@ -182,7 +182,7 @@ def send_push(jobs: list[dict]) -> bool:
         if len(jobs) > 5:
             body += f"\n...and {len(jobs) - 5} more"
 
-        # Top job's apply URL — tapping the notification opens this
+        # Top job's apply URL: tapping the notification opens this
         top_url = jobs[0].get("url", "")
 
         # Google Sheet link for the "View All" action button
@@ -266,7 +266,7 @@ def send_no_jobs_push() -> bool:
         now = _get_eastern_time()
         requests.post(
             f"https://ntfy.sh/{topic}",
-            data=f"Scanned all portals at {now} — no new matching jobs found. Will check again soon.".encode(
+            data=f"Scanned all portals at {now}. No new matching jobs found. Will check again soon.".encode(
                 "utf-8"
             ),
             headers={

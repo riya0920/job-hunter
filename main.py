@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JOB HUNTER — Automated AI/ML Job Discovery & Alert System
+JOB HUNTER: Automated AI/ML Job Discovery & Alert System
 ==========================================================
 Main orchestrator that runs the full pipeline:
 1. Scrape jobs from ATS APIs + job aggregators
@@ -9,11 +9,11 @@ Main orchestrator that runs the full pipeline:
 4. Send email + push notifications
 
 Usage:
-    python main.py                  # Fast loop: ATS-direct only (default) — this
+    python main.py                  # Fast loop: ATS-direct only (default). This
                                     #   is what the 5-min cron runs. Fast, reliable,
                                     #   the source of truth, beats LinkedIn.
     python main.py --with-aggregators  # Also scrape LinkedIn/Indeed via JobSpy
-                                    #   (slow, fragile — run a few times a day only)
+                                    #   (slow, fragile; run a few times a day only)
     python main.py --dry-run        # Scrape & score only, no notifications
     python main.py --heartbeat      # Send a 'still alive' ping and exit
     python main.py --stats          # Show database stats
@@ -45,7 +45,7 @@ def load_config() -> dict:
 def run(dry_run: bool = False, with_aggregators: bool = False):
     """Execute the job hunting pipeline.
 
-    By default this runs ATS-direct only — the fast, reliable source of truth
+    By default this runs ATS-direct only, the fast, reliable source of truth
     that beats LinkedIn. Pass with_aggregators=True to ALSO scrape
     LinkedIn/Indeed via JobSpy (slow + fragile; run only a few times a day).
     """
@@ -53,14 +53,14 @@ def run(dry_run: bool = False, with_aggregators: bool = False):
     config = load_config()
 
     print("=" * 60)
-    print(f"🎯 JOB HUNTER — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"🎯 JOB HUNTER: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
     # ── Step 1: Scrape ──────────────────────────────────────────
     print("\n📡 STEP 1: Scraping job sources...")
     all_raw_jobs = []
 
-    # Always scrape ATS APIs (fast, reliable, free — the early edge)
+    # Always scrape ATS APIs (fast, reliable, free: the early edge)
     from scrapers.ats_scraper import scrape_all_ats
 
     ats_jobs = scrape_all_ats(config)
@@ -142,7 +142,7 @@ def run(dry_run: bool = False, with_aggregators: bool = False):
     # ── Summary ──────────────────────────────────────────────────
     elapsed = time.time() - start
     print("\n" + "=" * 60)
-    print(f"✅ COMPLETE — {len(processed_jobs)} new jobs processed")
+    print(f"✅ COMPLETE: {len(processed_jobs)} new jobs processed")
     print(f"   📊 Sheets: {'Written' if written else 'Skipped'}")
     print(f"   📧 Email:  {'Sent' if result.get('email') else 'Skipped'}")
     print(f"   📱 Push:   {'Sent' if result.get('push') else 'Skipped'}")

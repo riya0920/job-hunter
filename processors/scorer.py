@@ -1,5 +1,5 @@
 """
-Job processor — filters by experience level, detects H1B status,
+Job processor: filters by experience level, detects H1B status,
 scores resume match using TF-IDF cosine similarity + weighted keyword/skill heuristics.
 """
 
@@ -96,7 +96,7 @@ def check_experience_level(title: str, description: str, config: dict) -> dict:
                 "reason": f"Matches '{pattern}'",
             }
 
-    # No explicit signal — check years of experience in description
+    # No explicit signal: check years of experience in description
     years_pattern = r"(\d+)\+?\s*(?:-\s*\d+)?\s*years?\s*(?:of)?\s*(?:experience|exp)"
     matches = re.findall(years_pattern, text)
     if matches:
@@ -114,7 +114,7 @@ def check_experience_level(title: str, description: str, config: dict) -> dict:
                 "reason": f"Requires {min_years}+ years",
             }
 
-    # No experience mentioned — likely open to all levels, include it
+    # No experience mentioned: likely open to all levels, include it
     return {
         "level": "Not specified",
         "is_match": True,
@@ -162,11 +162,11 @@ def score_keyword_match(job_description: str) -> float:
 
 def score_skills_overlap(description: str) -> float:
     """
-    Direct skills matching — checks for specific technical skills from resume
+    Direct skills matching: checks for specific technical skills from resume
     that appear in the job description. More targeted than TF-IDF.
     Returns 0-100.
     """
-    # Key skills from Riya's resume — weighted by importance
+    # Key skills from Riya's resume: weighted by importance
     skill_weights = {
         "python": 3,
         "pytorch": 4,
@@ -330,7 +330,7 @@ def extract_skills_match(description: str, config: dict) -> str:
 def is_us_location(location: str) -> bool:
     """Check if a job location is in the United States."""
     if not location:
-        return True  # No location info — include it, better safe than sorry
+        return True  # No location info: include it, better safe than sorry
 
     loc = location.lower().strip()
 
@@ -460,7 +460,7 @@ def is_us_location(location: str) -> bool:
     if any(state in loc for state in us_state_names):
         return True
 
-    # Non-US signals — reject these
+    # Non-US signals: reject these
     non_us = [
         "india",
         "germany",
@@ -520,7 +520,7 @@ def is_us_location(location: str) -> bool:
     if any(place in loc for place in non_us):
         return False
 
-    # No clear signal either way — include it
+    # No clear signal either way: include it
     return True
 
 
@@ -590,7 +590,7 @@ def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
         if silent_boards:
             print(
                 f"[PROCESSOR] Cold-start: silently seeding {len(silent_boards)} "
-                f"new board(s) — their existing jobs won't alert."
+                f"new board(s): their existing jobs won't alert."
             )
 
     for job in raw_jobs:
@@ -604,7 +604,7 @@ def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
             continue
         seen_urls.add(url)
 
-        # Cold-start: a board we've never polled — seed silently, don't alert.
+        # Cold-start: a board we've never polled, seed silently, don't alert.
         bkey = f"{job.get('source', '')}:{company}"
         if bkey in silent_boards:
             mark_seen(url, title, company, score=0)
@@ -673,7 +673,7 @@ def process_jobs(raw_jobs: list[dict], config: dict) -> list[dict]:
         # Skills extraction
         skills = extract_skills_match(description, config)
 
-        # Freshness — real "posted X ago" + urgency flag
+        # Freshness: real "posted X ago" + urgency flag
         fresh = compute_freshness(job.get("date_posted", ""), config)
 
         # Build processed job

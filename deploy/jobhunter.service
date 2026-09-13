@@ -1,5 +1,5 @@
 [Unit]
-Description=Job Hunter — fast ATS-direct scan
+Description=Job Hunter: fast ATS-direct scan
 After=network-online.target
 Wants=network-online.target
 

@@ -1,5 +1,5 @@
 [Unit]
-Description=Job Hunter — aggregator backup scan (LinkedIn/Indeed via JobSpy)
+Description=Job Hunter: aggregator backup scan (LinkedIn/Indeed via JobSpy)
 After=network-online.target
 Wants=network-online.target
 

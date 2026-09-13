@@ -1,5 +1,5 @@
 """
-Google Sheets integration — writes job data and manages formatting.
+Google Sheets integration: writes job data and manages formatting.
 """
 
 import os
@@ -88,7 +88,7 @@ def write_jobs(jobs: list[dict]):
 
         ensure_headers(sheet)
 
-        # Build rows — sorted by score (highest first)
+        # Build rows: sorted by score (highest first)
         rows = []
         for job in sorted(jobs, key=lambda j: j.get("score", 0), reverse=True):
             url = job.get("url", "")

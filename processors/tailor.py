@@ -3,7 +3,7 @@ Instant-apply assist.
 
 Knowing about a job first only wins if you also APPLY first. For the strongest
 matches, this drafts a one-line, resume-grounded pitch (via Gemini) and attaches
-it to the job so it rides along in your alert — turning "I heard about it early"
+it to the job so it rides along in your alert, turning "I heard about it early"
 into "I applied within minutes."
 
 Fully optional and defensive: no GEMINI_API_KEY, or any error, and it simply
@@ -51,7 +51,7 @@ def _draft_pitch(job: dict, resume: str, model: str, key: str) -> str | None:
         resp.raise_for_status()
         data = resp.json()
         text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        return text.replace("\n", " ").replace("—", " ").replace("–", " ").strip() or None
+        return text.replace("\n", " ").replace("\u2014", " ").replace("–", " ").strip() or None
     except Exception:
         return None
 

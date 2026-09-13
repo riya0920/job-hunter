@@ -1,5 +1,5 @@
 """
-Scraper using JobSpy library — covers LinkedIn, Indeed, Google Jobs, ZipRecruiter.
+Scraper using JobSpy library: covers LinkedIn, Indeed, Google Jobs, ZipRecruiter.
 Plus a dedicated LinkedIn backup scraper hitting the public guest API directly.
 """
 
@@ -73,7 +73,7 @@ def scrape_aggregators(search_queries: list[str], config: dict) -> list[dict]:
 
 
 # =========================================================
-# DEDICATED LINKEDIN BACKUP — hits the public guest API
+# DEDICATED LINKEDIN BACKUP: hits the public guest API
 # This catches jobs that JobSpy misses due to rate limiting
 # =========================================================
 LINKEDIN_SEARCH_URL = (
@@ -98,14 +98,14 @@ def _linkedin_fetch(url: str, params: dict) -> requests.Response | None:
 
     try:
         if api_key:
-            # Route through ScraperAPI — different IP each request
+            # Route through ScraperAPI: different IP each request
             resp = requests.get(
                 SCRAPERAPI_BASE,
                 params={"api_key": api_key, "url": full_url},
                 timeout=30,
             )
         else:
-            # Direct — works locally, may get rate limited on cloud
+            # Direct: works locally, may get rate limited on cloud
             resp = requests.get(full_url, headers=headers, timeout=15)
 
         return resp if resp.status_code == 200 else None
@@ -204,7 +204,7 @@ def scrape_linkedin_direct(search_queries: list[str], config: dict) -> list[dict
         print(f"[LINKEDIN] Total: {len(all_jobs)} jobs")
     else:
         print(
-            f"[LINKEDIN] Total: 0 (may be rate limited — add SCRAPERAPI_KEY for better coverage)"
+            f"[LINKEDIN] Total: 0 (may be rate limited; add SCRAPERAPI_KEY for better coverage)"
         )
 
     return all_jobs

@@ -1,10 +1,10 @@
 """
-Direct ATS API scrapers — Greenhouse, Lever, Ashby, SmartRecruiters, Workday.
-These are public, unauthenticated JSON APIs — the SOURCE OF TRUTH, hit before a
+Direct ATS API scrapers: Greenhouse, Lever, Ashby, SmartRecruiters, Workday.
+These are public, unauthenticated JSON APIs: the SOURCE OF TRUTH, hit before a
 job is ever syndicated to LinkedIn/Indeed.
 
 Every board is scraped CONCURRENTLY (one task per company) so a full sweep of
-hundreds of boards finishes in seconds — that's what makes a 5-minute cron mean
+hundreds of boards finishes in seconds. That's what makes a 5-minute cron mean
 "within seconds of posting."
 """
 
@@ -252,7 +252,7 @@ def _scrape_ashby_one(company: str, config: dict) -> list[dict]:
 
 
 # =========================================================
-# SMARTRECRUITERS — public postings API, ISO release dates
+# SMARTRECRUITERS: public postings API, ISO release dates
 # =========================================================
 def _scrape_smartrecruiters_one(slug: str, config: dict) -> list[dict]:
     max_hours = config.get("freshness", {}).get("max_post_age_hours", 72)
@@ -293,7 +293,7 @@ def _scrape_smartrecruiters_one(slug: str, config: dict) -> list[dict]:
 
 
 # =========================================================
-# WORKDAY — per-tenant CXS endpoint (POST). Where big employers post FIRST.
+# WORKDAY: per-tenant CXS endpoint (POST). Where big employers post FIRST.
 # =========================================================
 _WORKDAY_QUERIES = ["machine learning", "software engineer", "data scientist"]
 
@@ -346,7 +346,7 @@ def _scrape_workday_one(entry: dict, config: dict) -> list[dict]:
 
 
 # =========================================================
-# REMOTIVE — free remote-jobs API
+# REMOTIVE: free remote-jobs API
 # =========================================================
 def _scrape_remotive(config: dict) -> list[dict]:
     data = _get_json_safe(

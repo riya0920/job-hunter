@@ -1,5 +1,5 @@
 # .github/workflows/job_hunter.yml
-# Smart scheduling — aggressive during business hours, lighter at night
+# Smart scheduling: aggressive during business hours, lighter at night
 # All times in UTC (ET = UTC - 4 during EDT)
 #
 # Schedule (Eastern Time):
@@ -27,7 +27,7 @@ on:
     - cron: '*/20 0-1 * * *'
     # 10pm-12am ET (2-3 UTC): every 45 min
     - cron: '0,45 2-3 * * *'
-    # 12am-7am ET (4-10 UTC): twice — 4am and 7am UTC (12am and 3am ET)
+    # 12am-7am ET (4-10 UTC): twice, 4am and 7am UTC (12am and 3am ET)
     - cron: '0 4,7 * * *'
     # 7am-9am ET (11-12 UTC): every 30 min
     - cron: '*/30 11-12 * * *'

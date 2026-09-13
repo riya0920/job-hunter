@@ -10,14 +10,14 @@
 
 Every 5 minutes, Job Hunter:
 
-1. **Scrapes job boards at the SOURCE, concurrently**: Greenhouse, Lever, Ashby, **SmartRecruiters, and Workday** ATS APIs (direct JSON, no auth) — ~100 boards swept in seconds. This is where jobs appear FIRST, before LinkedIn/Indeed syndication. (LinkedIn/Indeed via JobSpy are still available as an opt-in backup, `--with-aggregators`, run only a few times a day.)
+1. **Scrapes job boards at the SOURCE, concurrently**: Greenhouse, Lever, Ashby, **SmartRecruiters, and Workday** ATS APIs (direct JSON, no auth): ~100 boards swept in seconds. This is where jobs appear FIRST, before LinkedIn/Indeed syndication. (LinkedIn/Indeed via JobSpy are still available as an opt-in backup, `--with-aggregators`, run only a few times a day.)
 2. **Filters intelligently**: AI/ML **and** software-engineering roles, entry-level/new grad (0 to 3 years), US-based. ML/AI roles score a notch above general SWE so they float to the top.
 3. **Scores against your resume**: TF-IDF keyword matching plus AI/ML relevance scoring
 4. **Flags freshness**: shows "posted X min ago" and marks anything posted within 15 min as **🔥 URGENT**, floated to the top so you hit the truly-fresh ones first
-5. **Cold-start guard**: the first time it polls a company, it silently seeds that board's existing jobs — so adding a company never floods you. Only jobs posted *after* that first poll alert you.
+5. **Cold-start guard**: the first time it polls a company, it silently seeds that board's existing jobs, so adding a company never floods you. Only jobs posted *after* that first poll alert you.
 6. **Detects H1B sponsorship**: keyword analysis on job descriptions
 7. **Deduplicates**: SQLite-backed URL + title/company hashing (never see the same job twice)
-8. **Instant-apply assist**: for strong matches, drafts a one-line résumé-grounded pitch via Gemini and drops it into the alert — so you apply within minutes, not hours
+8. **Instant-apply assist**: for strong matches, drafts a one-line résumé-grounded pitch via Gemini and drops it into the alert, so you apply within minutes, not hours
 9. **Writes to Google Sheets**, **emails an HTML digest**, and **pushes ntfy alerts on every match** (with a daily heartbeat so silence never means "broken")
 
 ## Quick Start (5 minutes)
@@ -122,7 +122,7 @@ Free tier: 2M invocations per month plus 400K GB-seconds. This uses approximatel
 
 ### Option C: Oracle Cloud Always-Free VM ⭐ RECOMMENDED (true 5-min interval)
 
-GitHub Actions cron is frequently **late or skipped** — which defeats the whole
+GitHub Actions cron is frequently **late or skipped**, which defeats the whole
 point of being early. An always-on VM with systemd timers fires *on time*, every
 time. Everything is scripted in [`deploy/`](deploy/).
 
@@ -134,9 +134,9 @@ time. Everything is scripted in [`deploy/`](deploy/).
    cd /home/ubuntu/job-hunter
    ```
 3. Create three files in the repo root:
-   * `.env` — copy from [`deploy/jobhunter.env.example`](deploy/jobhunter.env.example) and fill in secrets
-   * `credentials.json` — your Google service-account key
-   * `resume.txt` — your résumé text
+   * `.env`: copy from [`deploy/jobhunter.env.example`](deploy/jobhunter.env.example) and fill in secrets
+   * `credentials.json`: your Google service-account key
+   * `resume.txt`: your résumé text
 4. Run the installer (creates the venv, installs deps, installs + enables the timers):
    ```bash
    bash deploy/setup.sh
@@ -156,7 +156,7 @@ systemctl list-timers | grep jobhunter    # next run times
 sudo systemctl start jobhunter.service     # run a scan right now
 journalctl -u jobhunter.service -f         # live logs
 ```
-The **first run seeds the DB silently** (cold-start guard) — real alerts begin on
+The **first run seeds the DB silently** (cold-start guard): real alerts begin on
 the second run. Because the DB lives on the VM, dedup persists naturally across
 runs (no cache juggling like GitHub Actions needs).
 
@@ -216,7 +216,7 @@ main.py                    ← Orchestrator
 | JobSpy (LinkedIn/Indeed) | Free, open source |
 | **Total** | **$0/month** |
 
-Optional: a Gemini API key (`GEMINI_API_KEY`) to draft a one-line, resume-grounded application pitch per top match (see `processors/tailor.py`). This affects only the optional pitch text, not scoring — scoring is TF-IDF + keyword/relevance heuristics and runs fully offline. Skipped silently when no key is set.
+Optional: a Gemini API key (`GEMINI_API_KEY`) to draft a one-line, resume-grounded application pitch per top match (see `processors/tailor.py`). This affects only the optional pitch text, not scoring; scoring is TF-IDF + keyword/relevance heuristics and runs fully offline. Skipped silently when no key is set.
 
 ## License
 

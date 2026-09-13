@@ -42,7 +42,7 @@ job_types:
 results_per_query: 25
 
 # ---- ATS Direct API Targets ----
-# Verified March 2026 — these are FREE, no-auth JSON APIs
+# Verified March 2026: these are FREE, no-auth JSON APIs
 
 # Greenhouse companies (boards-api.greenhouse.io/v1/boards/{slug}/jobs)
 greenhouse_companies:
@@ -152,7 +152,7 @@ ashby_companies:
 # Free public API, no auth. The slug is CASE-SENSITIVE and is the company id in
 # their careers URL: jobs.smartrecruiters.com/{slug}. Verify a slug by opening
 #   https://api.smartrecruiters.com/v1/companies/{slug}/postings
-# in a browser before adding it — many guesses return an empty list.
+# in a browser before adding it. Many guesses return an empty list.
 smartrecruiters_companies:
   - Visa   # verified live
 
@@ -211,7 +211,7 @@ staffing:
     - "workforce solutions"
     - "it services"
     - "staffing agency"
-  # Matched against TITLE + DESCRIPTION — phrases only staffing posts use.
+  # Matched against TITLE + DESCRIPTION: phrases only staffing posts use.
   exclude_description_patterns:
     - "our client"
     - "on behalf of our client"
@@ -238,11 +238,11 @@ staffing:
 # ---- Additional Free API Sources ----
 # These are scraped directly alongside ATS boards
 extra_api_sources:
-  # Wellfound (AngelList) — startup jobs
+  # Wellfound (AngelList): startup jobs
   wellfound: true
-  # Remotive — remote AI jobs
+  # Remotive: remote AI jobs
   remotive: true
-  # USAJobs — federal government AI positions
+  # USAJobs: federal government AI positions
   usajobs: true
 
 # ---- Scoring Configuration ----
@@ -373,7 +373,7 @@ relevance_keywords:
 
 # ---- Software Engineering Relevance (broader than ML) ----
 # You asked for "all software AND ML jobs." When include_software_roles is true,
-# general SWE roles are included too — but scored a notch below ML roles so
+# general SWE roles are included too, but scored a notch below ML roles so
 # ML/AI matches still float to the top of your alerts.
 include_software_roles: true
 software_keywords:
@@ -418,7 +418,7 @@ freshness:
 
 # ---- Cold-start guard ----
 # The FIRST time we poll a company's board, silently record its current jobs as
-# "seen" without alerting — so adding a new company never floods you with old
+# "seen" without alerting, so adding a new company never floods you with old
 # postings marked as new. Only jobs that appear AFTER that first poll alert you.
 cold_start:
   silent_first_poll: true
@@ -428,7 +428,7 @@ notifications:
   # Push every match above notify_score (not just high-match). You asked for
   # instant push + email on every match.
   push_every_match: true
-  # Don't send a "no new jobs" push on the fast loop — that would be spam at a
+  # Don't send a "no new jobs" push on the fast loop, that would be spam at a
   # 5-minute cadence. A daily heartbeat covers "is it still alive?" instead.
   push_when_empty: false
   # Send a daily heartbeat so you know the hunter is alive even on quiet days.
